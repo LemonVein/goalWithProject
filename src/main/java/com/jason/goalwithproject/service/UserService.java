@@ -7,7 +7,6 @@ import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
 import com.jason.goalwithproject.dto.user.UserLoginDto;
 import com.jason.goalwithproject.dto.user.UserRegisterDto;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -35,9 +34,7 @@ public class UserService {
                 "userId", user.getId(),
                 "email", user.getEmail(),
                 "nickname", user.getNickName(),
-                "userType", user.getUserType().getName(),
-                "level", user.getLevel(),
-                "actionPoints", user.getActionPoint()
+                "userType", user.getUserType().getName()
         );
 
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
@@ -70,9 +67,7 @@ public class UserService {
                 "userId", saveUser.getId(),
                 "email", saveUser.getEmail(),
                 "nickname", saveUser.getNickName(),
-                "userType", saveUser.getUserType().getName(),
-                "level", saveUser.getLevel(),
-                "actionPoints", saveUser.getActionPoint()
+                "userType", saveUser.getUserType().getName()
         );
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
         String refreshToken = jwtTokenProvider.generateRefreshToken(claims);

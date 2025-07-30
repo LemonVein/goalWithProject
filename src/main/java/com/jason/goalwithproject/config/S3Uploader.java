@@ -29,7 +29,6 @@ public class S3Uploader {
                 .bucket(bucket)
                 .key(fileName)
                 .contentType(file.getContentType())
-                .acl("public-read") // 퍼블릭 접근이 필요할 경우
                 .build();
 
         s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));

@@ -5,17 +5,11 @@ import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.user.User;
 import com.jason.goalwithproject.domain.user.UserRepository;
 import com.jason.goalwithproject.dto.quest.*;
-import com.jason.goalwithproject.dto.user.QuestUserDto;
 import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -155,7 +149,13 @@ public class QuestService {
                     .map(RecordImage::getUrl)
                     .toList();
 
-            QuestRecordDto dto = QuestRecordDto.fromEntity(questRecord, imageUrls, userId);
+            QuestRecordDto dto = new QuestRecordDto(questRecord.getId(),
+                    questRecord.getDate(),
+                    questRecord.getText(),
+                    imageUrls,
+                    questRecord.getQuest().getId(),
+                    questRecord.getCreatedAt(),
+                    userId);
             questRecordDtos.add(dto);
         }
 

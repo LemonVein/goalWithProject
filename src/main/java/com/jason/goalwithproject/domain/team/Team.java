@@ -29,5 +29,5 @@ public class Team {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "leader", referencedColumnName = "id")
-    private User user;
+    private User leader;
 }

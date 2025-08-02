@@ -189,6 +189,11 @@ public class QuestService {
         return Map.of("status", "success");
     }
 
+    // 수정 필요 함 아직 작성안함.
+    public QuestResponseDto updateQuest(String authorization, Long questId, QuestAddRequest questAddRequest) {
+        return new QuestResponseDto();
+    }
+
 //    public Page<QuestVerifyResponseDto> getQuestVerifyWithPaging(@RequestParam(defaultValue = "0") int page) {
 //        Pageable pageable = PageRequest.of(page, 8, Sort.by("startDate").descending());
 //        Page<Quest> quests = questRepository.findAllByVerificationRequiredTrueAndQuestStatus_Verify(pageable);

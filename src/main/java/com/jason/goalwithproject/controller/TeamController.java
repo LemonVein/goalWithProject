@@ -3,6 +3,7 @@ package com.jason.goalwithproject.controller;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
 import com.jason.goalwithproject.service.TeamService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,9 +16,15 @@ public class TeamController {
     private final TeamService teamService;
 
     @GetMapping("")
-    public Map<String, Object> getUserTeams(@RequestHeader("Authorization") String authorization) {
+    public ResponseEntity<Map<String, Object>> getUserTeams(@RequestHeader("Authorization") String authorization) {
         List<TeamResponseDto> UserTeams = teamService.findAllUserTeams(authorization);
-        return Map.of("teams", UserTeams);
+        return ResponseEntity.ok(Map.of("teams", UserTeams));
+    }
+
+    // 완성하지 않음 수정 필요함
+    @DeleteMapping("/{teamId}")
+    public ResponseEntity<Map<String, Object>> deleteTeam(@PathVariable("teamId") Long teamId) {
+        return ResponseEntity.ok(Map.of("status", "success")); // 수정 필요 보류
     }
 
 }

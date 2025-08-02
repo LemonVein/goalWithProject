@@ -14,6 +14,7 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
     List<Quest> findAllByUser_Id(Long id);
     Optional<Quest> findById(Long id);
     Optional<Quest> findByTeam_Id(int teamId);
+    List<Quest> findByTeam_IdIn(List<Integer> teamIds);
     Page<Quest> findAllByVerificationRequiredTrueAndQuestStatus(QuestStatus questStatus, Pageable pageable);
 
 }

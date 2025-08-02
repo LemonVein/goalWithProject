@@ -3,6 +3,7 @@ package com.jason.goalwithproject.controller;
 import com.jason.goalwithproject.domain.quest.ReactionType;
 import com.jason.goalwithproject.dto.quest.QuestAddRequest;
 import com.jason.goalwithproject.dto.quest.QuestDto;
+import com.jason.goalwithproject.dto.quest.QuestResponseDto;
 import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,12 @@ public class QuestController {
     public ResponseEntity<Map<ReactionType, Integer>> returnReactionCount(@PathVariable Long questId) {
         Map<ReactionType, Integer> reactionMap = questService.countReactions(questId);
         return ResponseEntity.ok(reactionMap);
+    }
+
+    // 완성하지 않음 수정 필요함
+    @PutMapping("/{questId}")
+    public ResponseEntity<QuestResponseDto> updateQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody QuestAddRequest questAddRequest) {
+        return ResponseEntity.ok(questService.updateQuest(authorization, questId, questAddRequest)); // 수정 필요 보류
     }
 
     @DeleteMapping("/{questId}")

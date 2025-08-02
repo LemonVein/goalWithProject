@@ -2,6 +2,7 @@ package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.domain.quest.Quest;
 import com.jason.goalwithproject.domain.quest.QuestRepository;
+import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.team.TeamRepository;
 import com.jason.goalwithproject.domain.user.User;
 import com.jason.goalwithproject.domain.user.UserTeam;
@@ -13,7 +14,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,26 +30,40 @@ public class TeamService {
     public List<TeamResponseDto> findAllUserTeams(String authorization) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
-        List<TeamResponseDto> result = new ArrayList<>();
 
         List<UserTeam> userTeams = userTeamRepository.findByUser_Id(userId);
-        for (UserTeam userTeam : userTeams) {
-            TeamResponseDto teamResponseDto = new TeamResponseDto();
-            teamResponseDto.setId(userTeam.getTeam().getId());
-            teamResponseDto.setName(userTeam.getTeam().getName());
-            teamResponseDto.setDescription(userTeam.getTeam().getDescription());
-            teamResponseDto.setLeader(userTeam.getTeam().getLeader());
+        List<Integer> teamIds = userTeams.stream()
+                .map(ut -> ut.getTeam().getId())
+                .toList();
 
-            List<UserTeam> userTeams1 = userTeamRepository.findByTeam_Id(userTeam.getTeam().getId());
-            List<User> users = userTeams1.stream().map(u -> u.getUser()).collect(Collectors.toList());
-            teamResponseDto.setMembers(users);
+        List<UserTeam> allUserTeamsForTeams = userTeamRepository.findByTeam_IdIn(teamIds);
+        Map<Integer, List<User>> teamMembersMap = allUserTeamsForTeams.stream()
+                .collect(Collectors.groupingBy(
+                        ut -> ut.getTeam().getId(),
+                        Collectors.mapping(UserTeam::getUser, Collectors.toList())
+                ));
 
-            Optional<Quest> teamQuest = questRepository.findByTeam_Id(userTeam.getTeam().getId());
-            teamResponseDto.setTeamQuest(teamQuest.isPresent() ? teamQuest.get() : null);
+        List<Quest> quests = questRepository.findByTeam_IdIn(teamIds);
+        Map<Integer, Quest> teamQuestMap = quests.stream()
+                .collect(Collectors.toMap(
+                        q -> q.getTeam().getId(),
+                        Function.identity()
+                ));
 
-            result.add(teamResponseDto);
-
-        }
+        // 빌더 패턴으로 코드 리팩토링
+            List<TeamResponseDto> result = userTeams.stream()
+                    .map(ut -> {
+                        Team team = ut.getTeam();
+                        return TeamResponseDto.builder()
+                                .id(team.getId())
+                                .name(team.getName())
+                                .description(team.getDescription())
+                                .leader(team.getLeader())
+                                .members(teamMembersMap.getOrDefault(team.getId(), List.of()))
+                                .teamQuest(teamQuestMap.get(team.getId()))
+                                .build();
+                    })
+                    .toList();
         return result;
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -34,6 +35,22 @@ public class S3Uploader {
         s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
 
         return getFileUrl(fileName);
+    }
+
+    public void deleteFile(String fileUrl) {
+        int idx = fileUrl.indexOf(".amazonaws.com/");
+        if (idx == -1) {
+            throw new IllegalArgumentException("잘못된 S3 URL 형식입니다: " + fileUrl);
+        }
+
+        String key = fileUrl.substring(idx + ".amazonaws.com/".length());
+
+        DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+
+        s3Client.deleteObject(deleteObjectRequest);
     }
 
     private String getFileUrl(String fileName) {

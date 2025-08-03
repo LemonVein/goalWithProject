@@ -132,7 +132,23 @@ public class QuestService {
         if (!target.isPresent()) {
             return Map.of("status", "failure");
         } else {
+            List<QuestRecord> questRecords = questRecordRepository.findAllByQuest_Id(questId);
+
+            for (QuestRecord record : questRecords) {
+                List<RecordImage> images = recordImageRepository.findByQuestRecord_Id(record.getId());
+
+                // 이미지 S3에서 삭제
+                for (RecordImage image : images) {
+                    s3Uploader.deleteFile(image.getUrl());
+                }
+
+                // 이미지 DB에서 삭제
+                recordImageRepository.deleteAll(images);
+            }
+            questRecordRepository.deleteAll(questRecords);
+
             questRepository.delete(target.get());
+
             return Map.of("status", "success");
         }
     }
@@ -190,8 +206,17 @@ public class QuestService {
     }
 
     // 수정 필요 함 아직 작성안함.
-    public QuestResponseDto updateQuest(String authorization, Long questId, QuestAddRequest questAddRequest) {
-        return new QuestResponseDto();
+    public Map<String, String> updateQuest(String authorization, Long questId, QuestAddRequest questAddRequest) {
+        Optional<Quest> target = questRepository.findById(questId);
+
+        if (target.isPresent()) {
+            Quest quest = target.get();
+            quest.updateFrom(questAddRequest);
+            questRepository.save(quest);
+            return Map.of("status", "success");
+        }
+
+        return Map.of("status", "failure");
     }
 
 //    public Page<QuestVerifyResponseDto> getQuestVerifyWithPaging(@RequestParam(defaultValue = "0") int page) {

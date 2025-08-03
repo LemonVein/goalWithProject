@@ -2,6 +2,7 @@ package com.jason.goalwithproject.domain.quest;
 
 import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.user.User;
+import com.jason.goalwithproject.dto.quest.QuestAddRequest;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -54,4 +55,13 @@ public class Quest {
     @Column(name = "required_verification")
     private int requiredVerification = 2;
 
+    public void updateFrom(QuestAddRequest request) {
+        this.title = request.getTitle();
+        this.description = request.getDescription();
+        this.isMain = request.isMain();
+        this.endDate = request.getEndDate();
+        this.questStatus = request.getProcedure();
+        this.verificationRequired = request.isVerificationRequired();
+        this.requiredVerification = request.getRequiredVerification();
+    }
 }

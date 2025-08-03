@@ -37,9 +37,9 @@ public class QuestController {
         return ResponseEntity.ok(reactionMap);
     }
 
-    // 완성하지 않음 수정 필요함
+    // 수정, 삭제 메서드
     @PutMapping("/{questId}")
-    public ResponseEntity<QuestResponseDto> updateQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody QuestAddRequest questAddRequest) {
+    public ResponseEntity<Map<String, String>> updateQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody QuestAddRequest questAddRequest) {
         return ResponseEntity.ok(questService.updateQuest(authorization, questId, questAddRequest)); // 수정 필요 보류
     }
 

@@ -33,6 +33,8 @@ public class TeamService {
     private final QuestRepository questRepository;
     private final JwtService jwtService;
 
+    private final QuestService questService;
+
     public Map<String, Integer> createTeam(String authorization, TeamAddRequestDto teamAddRequestDto) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
@@ -100,6 +102,24 @@ public class TeamService {
                             .build();
                 })
                 .toList();
+    }
+
+    public Map<String, String> deleteTeam(String authorization, int teamId) {
+        Team targetTeam = teamRepository.findById(teamId);
+
+        if (targetTeam == null) {
+            return Map.of("status", "failure");
+        } else {
+            Quest quest = questRepository.findByTeam_Id(teamId).orElse(null);
+            assert quest != null;
+            try {
+                questService.deleteQuestWithQuestId(quest.getId());
+                teamRepository.delete(targetTeam);
+            } catch (Exception e) {
+                return Map.of("status", "failure");
+            }
+            return Map.of("status", "success");
+        }
     }
     private UserDto convertToDto(User user) {
         if (user == null) return null;

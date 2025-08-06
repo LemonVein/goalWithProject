@@ -2,6 +2,8 @@ package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.config.S3Uploader;
 import com.jason.goalwithproject.domain.quest.*;
+import com.jason.goalwithproject.domain.team.Team;
+import com.jason.goalwithproject.domain.team.TeamRepository;
 import com.jason.goalwithproject.domain.user.User;
 import com.jason.goalwithproject.domain.user.UserRepository;
 import com.jason.goalwithproject.dto.quest.*;
@@ -22,6 +24,7 @@ public class QuestService {
 
     private final JwtService jwtService;
     private final QuestRepository questRepository;
+    private final TeamRepository teamRepository;
     private final QuestRecordRepository questRecordRepository;
     private final QuestVerificationRepository questVerificationRepository;
     private final RecordImageRepository recordImageRepository;
@@ -86,17 +89,36 @@ public class QuestService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
 
         Quest newQuest = new Quest();
-        newQuest.setTitle(questAddRequest.getTitle());
-        newQuest.setDescription(questAddRequest.getDescription());
-        newQuest.setStartDate(questAddRequest.getStartDate());
-        newQuest.setEndDate(questAddRequest.getEndDate());
-        newQuest.setDescription(questAddRequest.getDescription());
-        newQuest.setQuestStatus(QuestStatus.PROGRESS);
-        newQuest.setVerificationRequired(questAddRequest.isVerificationRequired());
-        newQuest.setMain(questAddRequest.isMain());
-        newQuest.setRequiredVerification(questAddRequest.getRequiredVerification());
-        newQuest.setUser(user);
-        newQuest.setTeam(null);
+
+        // 팀이 있다면 team_id 없다면 -1 로 처리
+        if (questAddRequest.getTeamId() == -1) {
+            newQuest.setTitle(questAddRequest.getTitle());
+            newQuest.setDescription(questAddRequest.getDescription());
+            newQuest.setStartDate(questAddRequest.getStartDate());
+            newQuest.setEndDate(questAddRequest.getEndDate());
+            newQuest.setDescription(questAddRequest.getDescription());
+            newQuest.setQuestStatus(QuestStatus.PROGRESS);
+            newQuest.setVerificationRequired(questAddRequest.isVerificationRequired());
+            newQuest.setMain(questAddRequest.isMain());
+            newQuest.setRequiredVerification(questAddRequest.getRequiredVerification());
+            newQuest.setUser(user);
+            newQuest.setTeam(null);
+        } else {
+            newQuest.setTitle(questAddRequest.getTitle());
+            newQuest.setDescription(questAddRequest.getDescription());
+            newQuest.setStartDate(questAddRequest.getStartDate());
+            newQuest.setEndDate(questAddRequest.getEndDate());
+            newQuest.setDescription(questAddRequest.getDescription());
+            newQuest.setQuestStatus(QuestStatus.PROGRESS);
+            newQuest.setVerificationRequired(questAddRequest.isVerificationRequired());
+            newQuest.setMain(questAddRequest.isMain());
+            newQuest.setRequiredVerification(questAddRequest.getRequiredVerification());
+            newQuest.setUser(user);
+
+            Team team = teamRepository.findById(questAddRequest.getTeamId());
+            newQuest.setTeam(team);
+        }
+
 
         try {
             questRepository.save(newQuest);

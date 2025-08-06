@@ -49,6 +49,12 @@ public class QuestController {
         return ResponseEntity.ok(resultMap);
     }
 
+    // 수정 필요 퀘스트 인증 수행 컨트롤러
+    @PostMapping("/verification/{questId}")
+    public ResponseEntity<Map<String, String>> verifyQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody String comment) {
+        return ResponseEntity.ok(Map.of("suscess", "sss"));
+    }
+
 //    @GetMapping("/verification")
 //    public ResponseEntity<Page<QuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestParam(defaultValue = "0") int page) {
 //

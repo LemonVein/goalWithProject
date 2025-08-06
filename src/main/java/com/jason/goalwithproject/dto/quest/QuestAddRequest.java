@@ -19,4 +19,6 @@ public class QuestAddRequest {
     private QuestStatus procedure;
     private boolean verificationRequired;
     private int requiredVerification;
+    @JsonProperty("team_id")
+    private int TeamId;
 }

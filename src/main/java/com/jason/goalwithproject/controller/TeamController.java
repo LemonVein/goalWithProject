@@ -1,8 +1,10 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.team.TeamAddRequestDto;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
 import com.jason.goalwithproject.service.TeamService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.relational.core.sql.In;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +21,12 @@ public class TeamController {
     public ResponseEntity<Map<String, Object>> getUserTeams(@RequestHeader("Authorization") String authorization) {
         List<TeamResponseDto> UserTeams = teamService.findAllUserTeams(authorization);
         return ResponseEntity.ok(Map.of("teams", UserTeams));
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<Map<String, Integer>> createTeam(@RequestHeader("Authorization") String authorization, @RequestBody TeamAddRequestDto teamAddRequestDto) {
+        Map<String, Integer> result = teamService.createTeam(authorization, teamAddRequestDto);
+        return ResponseEntity.ok(result);
     }
 
     // 완성하지 않음 수정 필요함

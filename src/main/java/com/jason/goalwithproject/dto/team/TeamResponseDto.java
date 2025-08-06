@@ -2,6 +2,7 @@ package com.jason.goalwithproject.dto.team;
 
 import com.jason.goalwithproject.domain.quest.Quest;
 import com.jason.goalwithproject.domain.user.User;
+import com.jason.goalwithproject.dto.user.UserDto;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,8 +17,8 @@ public class TeamResponseDto {
     private int id;
     private String name;
     private String description;
-    private List<User> members;
-    private User leader;
+    private List<UserDto> members;
+    private UserDto leader;
     private boolean isPublic;
     private LocalDateTime createdAt;
     private Quest teamQuest;

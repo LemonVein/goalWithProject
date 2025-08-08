@@ -13,6 +13,7 @@ public class UserDto {
     private String email;
     private int level;
     private int actionPoints;
+    private int exp;
     private String userType;
     private String character;
     private String badge;

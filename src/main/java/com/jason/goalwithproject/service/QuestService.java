@@ -147,6 +147,7 @@ public class QuestService {
         return reactionMap;
     }
 
+    @Transactional
     public Map<String, String> deleteQuestWithQuestId(Long questId) {
         Optional<Quest> target = questRepository.findById(questId);
 

@@ -2,6 +2,7 @@ package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
 import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
+import com.jason.goalwithproject.dto.user.UserDto;
 import com.jason.goalwithproject.dto.user.UserLoginDto;
 import com.jason.goalwithproject.dto.user.UserRegisterDto;
 import com.jason.goalwithproject.service.UserService;
@@ -27,7 +28,15 @@ public class UserController {
         TokenResponseWithStatus tokens = userService.TrySignUp(userRegisterDto);
         return ResponseEntity.ok(tokens);
     }
-    // 게스트 로그인 수정 필요
+
+    // 유저 정보 확인
+    @GetMapping("/info")
+    public ResponseEntity<UserDto> GetUserInfo(@RequestHeader("Authorization") String authorization) {
+        UserDto dto = userService.getUserInfo(authorization);
+        return ResponseEntity.ok(dto);
+    }
+
+    // 게스트 로그인 잠정 보류
 //    public ResponseEntity<TokenResponseWithStatus> guestLogin(@RequestBody UserLoginDto userLoginDto) {
 //
 //    }

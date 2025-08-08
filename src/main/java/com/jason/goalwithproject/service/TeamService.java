@@ -38,6 +38,7 @@ public class TeamService {
     private final UserRepository userRepository;
     private final QuestRepository questRepository;
     private final JwtService jwtService;
+    private final DtoConverterService dtoConverterService;
 
     private final QuestService questService;
 
@@ -88,7 +89,7 @@ public class TeamService {
         Map<Integer, QuestResponseDto> teamQuestMap = quests.stream()
                 .collect(Collectors.toMap(
                         q -> q.getTeam().getId(),
-                        this::convertToQuestDto
+                        dtoConverterService::convertToQuestDto
                 ));
 
         return userTeams.stream()
@@ -98,10 +99,10 @@ public class TeamService {
                             .id(team.getId())
                             .name(team.getName())
                             .description(team.getDescription())
-                            .leader(convertToDto(team.getLeader()))
+                            .leader(dtoConverterService.convertToDto(team.getLeader()))
                             .members(teamMembersMap.getOrDefault(team.getId(), List.of())
                                     .stream()
-                                    .map(this::convertToDto)
+                                    .map(dtoConverterService::convertToDto)
                                     .toList())
                             .teamQuest(teamQuestMap.get(team.getId()))
                             .createdAt(team.getCreatedAt())
@@ -157,58 +158,5 @@ public class TeamService {
         }
     }
 
-    private UserDto convertToDto(User user) {
-        if (user == null) return null;
-        UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
-        UserBadge userBadge = userBadgeRepository.findByUser_Id(user.getId());
 
-
-        return UserDto.builder()
-                .id(user.getId())
-                .nickname(user.getNickName())
-                .email(user.getEmail())
-                .level(user.getLevel())
-                .actionPoints(user.getActionPoint())
-                .userType(user.getUserType().getName())
-                .character(userCharacter.getCharacterImage().getImage())
-                .badge(userBadge.getBadge().getImageUrl())
-                .build();
-    }
-
-    private QuestResponseDto convertToQuestDto(Quest quest) {
-        if (quest == null) {
-            return null;
-        }
-
-        List<QuestRecord> questRecords = questRecordRepository.findAllByQuest_Id(quest.getId());
-
-        List<QuestRecordDto> questRecordDtos = questRecords.stream().map(record -> {
-            List<RecordImage> images = recordImageRepository.findByQuestRecord_Id(record.getId());
-            List<String> imageUrls = images.stream()
-                    .map(RecordImage::getUrl)
-                    .toList();
-            return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
-        }).toList();
-
-        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_IdAndUser_Id(quest.getId(), quest.getUser().getId());
-
-        List<QuestVerificationDto> questVerificationDtos = questVerifications.stream()
-                .map(QuestVerificationDto::fromEntity)
-                .toList();
-
-        return QuestResponseDto.builder()
-                .id(quest.getId())
-                .title(quest.getTitle())
-                .description(quest.getDescription())
-                .isMain(quest.isMain())
-                .startDate(quest.getStartDate())
-                .endDate(quest.getEndDate())
-                .procedure(quest.getQuestStatus())
-                .verificationRequired(quest.isVerificationRequired())
-                .verificationCount(quest.getVerificationCount())
-                .requiredVerification(quest.getRequiredVerification())
-                .records(questRecordDtos)
-                .verifications(questVerificationDtos)
-                .build();
-    }
 }

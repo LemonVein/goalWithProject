@@ -4,8 +4,10 @@ import com.jason.goalwithproject.config.JwtTokenProvider;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
 import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
+import com.jason.goalwithproject.dto.user.UserDto;
 import com.jason.goalwithproject.dto.user.UserLoginDto;
 import com.jason.goalwithproject.dto.user.UserRegisterDto;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserTypeRepository userTypeRepository;
+    private final DtoConverterService dtoConverterService;
 
     public TokenResponse TryLogin(UserLoginDto userLoginDto) {
         User user = userRepository.findByEmail(userLoginDto.getEmail()).orElse(null);
@@ -31,10 +34,7 @@ public class UserService {
         }
 
         Map<String, Object> claims = Map.of(
-                "userId", user.getId(),
-                "email", user.getEmail(),
-                "nickname", user.getNickName(),
-                "userType", user.getUserType().getName()
+                "userId", user.getId()
         );
 
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
@@ -64,14 +64,25 @@ public class UserService {
 
         User saveUser = userRepository.save(user);
         Map<String, Object> claims = Map.of(
-                "userId", saveUser.getId(),
-                "email", saveUser.getEmail(),
-                "nickname", saveUser.getNickName(),
-                "userType", saveUser.getUserType().getName()
+                "userId", saveUser.getId()
         );
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
         String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
 
         return new TokenResponseWithStatus(accessToken, refreshToken, "success");
+    }
+
+    public UserDto getUserInfo(String authorization) {
+        Claims claims = jwtTokenProvider.parseToken(authorization);
+        Long userId = (Long) claims.get("userId");
+
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return null;
+        }
+
+        UserDto dto = dtoConverterService.convertToDto(user);
+        return dto;
+
     }
 }

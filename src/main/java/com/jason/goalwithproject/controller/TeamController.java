@@ -4,7 +4,6 @@ import com.jason.goalwithproject.dto.team.TeamAddRequestDto;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
 import com.jason.goalwithproject.service.TeamService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.relational.core.sql.In;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +34,11 @@ public class TeamController {
     @DeleteMapping("/{teamId}")
     public ResponseEntity<Map<String, String>> deleteTeam(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId) {
         return ResponseEntity.ok(teamService.deleteTeam(authorization, teamId));
+    }
+
+    @PutMapping("/{teamId}")
+    public ResponseEntity<Map<String, String>> editTeam(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId, @RequestBody TeamAddRequestDto teamAddRequestDto) {
+        return ResponseEntity.ok(teamService.editTeam(authorization, teamId, teamAddRequestDto));
     }
 
 }

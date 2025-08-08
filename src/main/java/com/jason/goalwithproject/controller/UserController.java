@@ -27,5 +27,9 @@ public class UserController {
         TokenResponseWithStatus tokens = userService.TrySignUp(userRegisterDto);
         return ResponseEntity.ok(tokens);
     }
+    // 게스트 로그인 수정 필요
+//    public ResponseEntity<TokenResponseWithStatus> guestLogin(@RequestBody UserLoginDto userLoginDto) {
+//
+//    }
 
 }

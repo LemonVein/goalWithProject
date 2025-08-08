@@ -121,6 +121,22 @@ public class TeamService {
             return Map.of("status", "success");
         }
     }
+
+    public Map<String, String> editTeam(String authorization, int teamId, TeamAddRequestDto teamAddRequestDto) {
+        Team targetTeam = teamRepository.findById(teamId);
+
+        if (targetTeam == null) {
+            return Map.of("status", "failure");
+        } else {
+            targetTeam.setDescription(teamAddRequestDto.getDescription());
+            targetTeam.setName(teamAddRequestDto.getName());
+            targetTeam.setPublic(teamAddRequestDto.isPublic());
+
+            teamRepository.save(targetTeam);
+            return Map.of("status", "success");
+        }
+    }
+
     private UserDto convertToDto(User user) {
         if (user == null) return null;
         UserCharacter userCharacter = userCharacterRepository.findById(user.getId()).orElse(null);

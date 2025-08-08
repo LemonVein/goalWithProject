@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 
@@ -32,12 +33,12 @@ public class TeamController {
 
     // 팀 삭제
     @DeleteMapping("/{teamId}")
-    public ResponseEntity<Map<String, String>> deleteTeam(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId) {
+    public ResponseEntity<Map<String, String>> deleteTeam(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId) throws AccessDeniedException {
         return ResponseEntity.ok(teamService.deleteTeam(authorization, teamId));
     }
 
     @PutMapping("/{teamId}")
-    public ResponseEntity<Map<String, String>> editTeam(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId, @RequestBody TeamAddRequestDto teamAddRequestDto) {
+    public ResponseEntity<Map<String, String>> editTeam(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId, @RequestBody TeamAddRequestDto teamAddRequestDto) throws AccessDeniedException {
         return ResponseEntity.ok(teamService.editTeam(authorization, teamId, teamAddRequestDto));
     }
 

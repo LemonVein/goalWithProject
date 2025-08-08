@@ -2,6 +2,7 @@ package com.jason.goalwithproject.dto.team;
 
 import com.jason.goalwithproject.domain.quest.Quest;
 import com.jason.goalwithproject.domain.user.User;
+import com.jason.goalwithproject.dto.quest.QuestResponseDto;
 import com.jason.goalwithproject.dto.user.UserDto;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,5 +22,5 @@ public class TeamResponseDto {
     private UserDto leader;
     private boolean isPublic;
     private LocalDateTime createdAt;
-    private Quest teamQuest;
+    private QuestResponseDto teamQuest;
 }

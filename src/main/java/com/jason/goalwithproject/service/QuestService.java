@@ -32,12 +32,12 @@ public class QuestService {
     private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
 
-    public QuestDto findQuests(String authentication) {
+    public QuestListDto findQuests(String authentication) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authentication);
         Long userId = Long.valueOf(claims.get("userId").toString());
 
         // 사용자의 모든 퀘스트 조회
-        List<Quest> userQuests = questRepository.findAllByUser_Id(userId);
+        List<Quest> userQuests = questRepository.findAllByUser_IdAndTeamIsNull(userId);
 
         // 각 퀘스트마다 관련 데이터 조합
         List<QuestResponseDto> questResponseDtos = userQuests.stream().map(quest -> {
@@ -58,27 +58,26 @@ public class QuestService {
                 return QuestRecordDto.fromEntity(record, imageUrls, userId);
             }).toList();
 
-            QuestResponseDto questResponseDto = new QuestResponseDto();
-            questResponseDto.setTitle(quest.getTitle());
-            questResponseDto.setId(questId);
-            questResponseDto.setDescription(quest.getDescription());
-            questResponseDto.setMain(quest.isMain());
-            questResponseDto.setStartDate(quest.getStartDate());
-            questResponseDto.setEndDate(quest.getEndDate());
-            questResponseDto.setProcedure(quest.getQuestStatus());
-            questResponseDto.setVerificationRequired(quest.isVerificationRequired());
-            questResponseDto.setVerificationCount(quest.getVerificationCount());
-            questResponseDto.setVerifications(questVerificationDtos);
-            questResponseDto.setRecords(questRecordDtos);
-            questResponseDto.setRequiredVerification(quest.getRequiredVerification());
-
-            return questResponseDto;
+            return QuestResponseDto.builder()
+                    .id(questId)
+                    .title(quest.getTitle())
+                    .description(quest.getDescription())
+                    .isMain(quest.isMain())
+                    .startDate(quest.getStartDate())
+                    .endDate(quest.getEndDate())
+                    .procedure(quest.getQuestStatus())
+                    .verificationRequired(quest.isVerificationRequired())
+                    .verificationCount(quest.getVerificationCount())
+                    .requiredVerification(quest.getRequiredVerification())
+                    .verifications(questVerificationDtos)
+                    .records(questRecordDtos)
+                    .build();
         }).toList();
 
-        QuestDto questDto = new QuestDto();
-        questDto.setQuests(questResponseDtos);
+        QuestListDto questListDto = new QuestListDto();
+        questListDto.setQuests(questResponseDtos);
 
-        return questDto;
+        return questListDto;
     }
 
     public Map<String, String> createQuest(@RequestHeader("Authorization") String authorization, QuestAddRequest questAddRequest) {
@@ -209,21 +208,29 @@ public class QuestService {
         newQuestRecord.setText(text);
         newQuestRecord.setDate(LocalDateTime.now());
         newQuestRecord.setQuest(questRepository.findById(questId).get());
+        newQuestRecord.setUser(userRepository.findById(userId).get());
         questRecordRepository.save(newQuestRecord);
 
         // 여기에 이미지들을 S3Uploader를 통해 업로드 하고 url 들을 리턴해주기
-        for (MultipartFile image : images) {
-            String targetUrl = s3Uploader.upload(image, "record-image");
+        if (images != null && !images.isEmpty()) {
+            List<RecordImage> recordImages = new ArrayList<>();
             try {
-                RecordImage recordImage = new RecordImage();
-                recordImage.setUrl(targetUrl);
-                recordImage.setQuestRecord(newQuestRecord);
-                recordImageRepository.save(recordImage);
+                for (MultipartFile image : images) {
+                    if (!image.isEmpty()) {
+                        String targetUrl = s3Uploader.upload(image, "record-image");
+                        RecordImage recordImage = new RecordImage();
+                        recordImage.setUrl(targetUrl);
+                        recordImage.setQuestRecord(newQuestRecord);
+                        recordImages.add(recordImage);
+                    }
+                }
+                recordImageRepository.saveAll(recordImages);
 
-            } catch (Exception e) {
+            } catch (IOException e) {
                 return Map.of("status", "failure");
             }
         }
+
         return Map.of("status", "success");
     }
 

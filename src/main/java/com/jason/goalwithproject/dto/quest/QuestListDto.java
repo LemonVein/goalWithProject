@@ -7,6 +7,6 @@ import java.util.List;
 
 @Getter
 @Setter
-public class QuestDto {
+public class QuestListDto {
     List<QuestResponseDto> quests;
 }

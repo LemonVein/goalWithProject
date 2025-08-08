@@ -2,6 +2,7 @@ package com.jason.goalwithproject.dto.quest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.jason.goalwithproject.domain.quest.QuestStatus;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,6 +11,7 @@ import java.util.List;
 
 @Getter
 @Setter
+@Builder
 public class QuestResponseDto {
     private Long id;
     private String title;

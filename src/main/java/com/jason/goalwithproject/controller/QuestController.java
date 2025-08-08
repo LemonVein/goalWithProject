@@ -2,12 +2,9 @@ package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.domain.quest.ReactionType;
 import com.jason.goalwithproject.dto.quest.QuestAddRequest;
-import com.jason.goalwithproject.dto.quest.QuestDto;
-import com.jason.goalwithproject.dto.quest.QuestResponseDto;
-import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
+import com.jason.goalwithproject.dto.quest.QuestListDto;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,9 +17,9 @@ public class QuestController {
     private final QuestService questService;
 
     @GetMapping("")
-    public ResponseEntity<QuestDto> returnQuestList(@RequestHeader("Authorization") String authorization) {
-        QuestDto questDto = questService.findQuests(authorization);
-        return ResponseEntity.ok(questDto);
+    public ResponseEntity<QuestListDto> returnQuestList(@RequestHeader("Authorization") String authorization) {
+        QuestListDto questListDto = questService.findQuests(authorization);
+        return ResponseEntity.ok(questListDto);
     }
 
     @PostMapping("/create")

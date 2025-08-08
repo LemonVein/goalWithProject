@@ -2,11 +2,13 @@ package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.domain.custom.CharacterImage;
 import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
-import com.jason.goalwithproject.domain.quest.Quest;
-import com.jason.goalwithproject.domain.quest.QuestRepository;
+import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.team.TeamRepository;
 import com.jason.goalwithproject.domain.user.*;
+import com.jason.goalwithproject.dto.quest.QuestRecordDto;
+import com.jason.goalwithproject.dto.quest.QuestResponseDto;
+import com.jason.goalwithproject.dto.quest.QuestVerificationDto;
 import com.jason.goalwithproject.dto.team.TeamAddRequestDto;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
 import com.jason.goalwithproject.dto.user.UserDto;
@@ -15,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,6 +30,9 @@ public class TeamService {
     private final UserTeamRepository userTeamRepository;
     private final UserCharacterRepository userCharacterRepository;
     private final CharacterImageRepository characterImageRepository;
+    private final QuestVerificationRepository questVerificationRepository;
+    private final RecordImageRepository recordImageRepository;
+    private final QuestRecordRepository questRecordRepository;
     private final UserBadgeRepository userBadgeRepository;
     private final UserTeamRepository userTeamUserRepository;
     private final UserRepository userRepository;
@@ -79,10 +85,10 @@ public class TeamService {
                 ));
 
         List<Quest> quests = questRepository.findByTeam_IdIn(teamIds);
-        Map<Integer, Quest> teamQuestMap = quests.stream()
+        Map<Integer, QuestResponseDto> teamQuestMap = quests.stream()
                 .collect(Collectors.toMap(
                         q -> q.getTeam().getId(),
-                        Function.identity()
+                        this::convertToQuestDto
                 ));
 
         return userTeams.stream()
@@ -104,8 +110,15 @@ public class TeamService {
                 .toList();
     }
 
-    public Map<String, String> deleteTeam(String authorization, int teamId) {
+    public Map<String, String> deleteTeam(String authorization, int teamId) throws AccessDeniedException {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
         Team targetTeam = teamRepository.findById(teamId);
+
+        if (!targetTeam.getLeader().getId().equals(userId)) {
+            throw new AccessDeniedException("팀 리더만 팀 삭제 요청을 할 수 있습니다.");
+        }
 
         if (targetTeam == null) {
             return Map.of("status", "failure");
@@ -122,8 +135,15 @@ public class TeamService {
         }
     }
 
-    public Map<String, String> editTeam(String authorization, int teamId, TeamAddRequestDto teamAddRequestDto) {
+    public Map<String, String> editTeam(String authorization, int teamId, TeamAddRequestDto teamAddRequestDto) throws AccessDeniedException {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
         Team targetTeam = teamRepository.findById(teamId);
+
+        if (!targetTeam.getLeader().getId().equals(userId)) {
+            throw new AccessDeniedException("팀 리더만 팀 수정 요청을 할 수 있습니다.");
+        }
 
         if (targetTeam == null) {
             return Map.of("status", "failure");
@@ -139,10 +159,10 @@ public class TeamService {
 
     private UserDto convertToDto(User user) {
         if (user == null) return null;
-        UserCharacter userCharacter = userCharacterRepository.findById(user.getId()).orElse(null);
+        UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
         UserBadge userBadge = userBadgeRepository.findByUser_Id(user.getId());
 
-        assert userCharacter != null;
+
         return UserDto.builder()
                 .id(user.getId())
                 .nickname(user.getNickName())
@@ -152,6 +172,43 @@ public class TeamService {
                 .userType(user.getUserType().getName())
                 .character(userCharacter.getCharacterImage().getImage())
                 .badge(userBadge.getBadge().getImageUrl())
+                .build();
+    }
+
+    private QuestResponseDto convertToQuestDto(Quest quest) {
+        if (quest == null) {
+            return null;
+        }
+
+        List<QuestRecord> questRecords = questRecordRepository.findAllByQuest_Id(quest.getId());
+
+        List<QuestRecordDto> questRecordDtos = questRecords.stream().map(record -> {
+            List<RecordImage> images = recordImageRepository.findByQuestRecord_Id(record.getId());
+            List<String> imageUrls = images.stream()
+                    .map(RecordImage::getUrl)
+                    .toList();
+            return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
+        }).toList();
+
+        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_IdAndUser_Id(quest.getId(), quest.getUser().getId());
+
+        List<QuestVerificationDto> questVerificationDtos = questVerifications.stream()
+                .map(QuestVerificationDto::fromEntity)
+                .toList();
+
+        return QuestResponseDto.builder()
+                .id(quest.getId())
+                .title(quest.getTitle())
+                .description(quest.getDescription())
+                .isMain(quest.isMain())
+                .startDate(quest.getStartDate())
+                .endDate(quest.getEndDate())
+                .procedure(quest.getQuestStatus())
+                .verificationRequired(quest.isVerificationRequired())
+                .verificationCount(quest.getVerificationCount())
+                .requiredVerification(quest.getRequiredVerification())
+                .records(questRecordDtos)
+                .verifications(questVerificationDtos)
                 .build();
     }
 }

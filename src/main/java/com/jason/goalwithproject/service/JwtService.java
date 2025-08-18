@@ -17,12 +17,7 @@ public class JwtService {
         Claims claims = jwtTokenProvider.parseToken(token);
 
         Map<String, Object> claimsMap = Map.of(
-                "userId",           claims.get("userId", String.class),
-                "email",        claims.get("email", String.class),
-                "nickname",     claims.get("nickname", String.class),
-                "userType",     claims.get("userType", String.class),
-                "level",        claims.get("level", Integer.class),
-                "actionPoints", claims.get("actionPoints", Integer.class)
+                "userId",           claims.get("userId", String.class)
         );
 
         return jwtTokenProvider.generateAccessToken(claimsMap);
@@ -32,12 +27,7 @@ public class JwtService {
         Claims claims = jwtTokenProvider.parseToken(token);
 
         Map<String, Object> claimsMap = Map.of(
-                "userId",           claims.get("userId", String.class),
-                "email",        claims.get("email", String.class),
-                "nickname",     claims.get("nickname", String.class),
-                "userType",     claims.get("userType", String.class),
-                "level",        claims.get("level", Integer.class),
-                "actionPoints", claims.get("actionPoints", Integer.class)
+                "userId",           claims.get("userId", String.class)
         );
 
         return jwtTokenProvider.generateRefreshToken(claimsMap);
@@ -48,7 +38,7 @@ public class JwtService {
             return null;
         }
 
-        String token = authorizationHeader.substring("Bearer ".length());
+        String token = authorizationHeader.substring("Bearer ".length()).trim();
 
         try {
             return jwtTokenProvider.parseToken(token);

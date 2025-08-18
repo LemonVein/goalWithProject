@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.quest.RecordAddRequest;
 import com.jason.goalwithproject.dto.team.TeamAddRequestDto;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
 import com.jason.goalwithproject.service.TeamService;

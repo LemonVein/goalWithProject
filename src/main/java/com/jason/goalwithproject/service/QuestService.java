@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -198,6 +199,47 @@ public class QuestService {
         }
 
         return questRecordDtos;
+    }
+
+
+    // 팀 포스트를 위한 팀 아이디를 제공 받음
+    public Map<String, String> addQuestTeamRecord(String authorization, int teamId, String text, List<MultipartFile> images) {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Optional<Quest> targetQuest = questRepository.findByTeam_IdAndQuestStatus(teamId, QuestStatus.PROGRESS);
+        if (!targetQuest.isPresent()) {
+            return Map.of("status", "failure");
+        }
+
+        QuestRecord newQuestRecord = new QuestRecord();
+        newQuestRecord.setText(text);
+        newQuestRecord.setDate(LocalDateTime.now());
+        newQuestRecord.setQuest(targetQuest.get());
+        newQuestRecord.setUser(userRepository.findById(userId).get());
+        questRecordRepository.save(newQuestRecord);
+
+        // 여기에 이미지들을 S3Uploader를 통해 업로드 하고 url 들을 리턴해주기
+        if (images != null && !images.isEmpty()) {
+            List<RecordImage> recordImages = new ArrayList<>();
+            try {
+                for (MultipartFile image : images) {
+                    if (!image.isEmpty()) {
+                        String targetUrl = s3Uploader.upload(image, "record-image");
+                        RecordImage recordImage = new RecordImage();
+                        recordImage.setUrl(targetUrl);
+                        recordImage.setQuestRecord(newQuestRecord);
+                        recordImages.add(recordImage);
+                    }
+                }
+                recordImageRepository.saveAll(recordImages);
+
+            } catch (IOException e) {
+                return Map.of("status", "failure");
+            }
+        }
+
+        return Map.of("status", "success");
     }
 
     @Transactional

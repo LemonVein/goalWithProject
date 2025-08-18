@@ -30,4 +30,8 @@ public class Reaction {
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "quest_record_id", referencedColumnName = "id")
+    private QuestRecord questRecord;
 }

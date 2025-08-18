@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.dto.user;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;

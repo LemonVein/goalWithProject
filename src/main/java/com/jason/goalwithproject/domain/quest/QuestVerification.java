@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Setter
@@ -22,4 +24,11 @@ public class QuestVerification {
     private User user;
 
     private String comment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "quest_record_id", referencedColumnName = "id")
+    private QuestRecord questRecord;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 }

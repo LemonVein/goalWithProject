@@ -22,6 +22,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserTypeRepository userTypeRepository;
     private final DtoConverterService dtoConverterService;
+    private final JwtService jwtService;
 
     public TokenResponse TryLogin(UserLoginDto userLoginDto) {
         User user = userRepository.findByEmail(userLoginDto.getEmail()).orElse(null);
@@ -73,8 +74,8 @@ public class UserService {
     }
 
     public UserDto getUserInfo(String authorization) {
-        Claims claims = jwtTokenProvider.parseToken(authorization);
-        Long userId = (Long) claims.get("userId");
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
 
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {

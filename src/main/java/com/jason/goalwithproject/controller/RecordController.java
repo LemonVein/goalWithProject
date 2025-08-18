@@ -1,6 +1,7 @@
 package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.dto.quest.QuestRecordDto;
+import com.jason.goalwithproject.dto.quest.RecordAddRequest;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +31,15 @@ public class RecordController {
                                                                  ) throws IOException {
         Map<String, String> result = questService.addQuestRecord(authorization, questId, text, images);
         return ResponseEntity.ok(result);
+    }
 
+
+    // 팀 레코드 추가 메서드
+    @PostMapping("/team/{teamId}")
+    public ResponseEntity<Map<String, String>> createTeamPost(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId,
+    @RequestPart("text") String text, @RequestPart(name = "images", required = false) List<MultipartFile> images){
+
+        Map<String, String> result = questService.addQuestTeamRecord(authorization, teamId, text, images);
+        return ResponseEntity.ok(result);
     }
 }

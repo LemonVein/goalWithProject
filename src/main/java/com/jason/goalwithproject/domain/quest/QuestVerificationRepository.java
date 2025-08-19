@@ -10,4 +10,7 @@ public interface QuestVerificationRepository extends JpaRepository<QuestVerifica
     List<QuestVerification> findAllByQuest_IdAndUser_Id(Long questId, Long userId);
     List<QuestVerification> findAllByQuestRecord_Id(Long questRecordId);
     List<QuestVerification> findAllByQuest_Id(Long questId);
+
+    void deleteByQuestRecord_Id(Long id);
+    void deleteAllByQuestRecord_Id(Long id);
 }

@@ -8,4 +8,6 @@ import java.util.List;
 @Repository
 public interface RecordImageRepository extends JpaRepository<RecordImage, Long> {
     List<RecordImage> findByQuestRecord_Id(Long id);
+    void deleteByQuestRecord_Id(Long id);
+    void deleteAllByQuestRecord_Id(Long id);
 }

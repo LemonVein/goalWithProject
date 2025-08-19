@@ -355,6 +355,76 @@ public class QuestService {
 
     }
 
+    @Transactional
+    public Map<String, String> updateRecord(String Authorization, Long recordId, RecordUpdateDto dto, List<MultipartFile> newImages) throws IOException {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(Authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Optional<QuestRecord> targetRecord = questRecordRepository.findById(recordId);
+
+        if (!targetRecord.get().getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("이 기록을 수정할 권한이 없습니다.");
+        }
+
+        targetRecord.get().setText(dto.getText());
+
+        List<RecordImage> currentImages = recordImageRepository.findByQuestRecord_Id(targetRecord.get().getId());
+        List<RecordImage> imagesToDelete = new ArrayList<>();
+
+        for (RecordImage dbImage : currentImages) {
+            // DB의 이미지가 클라이언트가 보낸 "유지할 이미지 목록"에 포함되어 있지 않다면
+            if (!dto.getExistingImages().contains(dbImage.getUrl())) {
+                imagesToDelete.add(dbImage);
+            }
+        }
+
+        for (RecordImage image : imagesToDelete) {
+            s3Uploader.deleteFile(image.getUrl());
+            recordImageRepository.delete(image);
+        }
+
+        if (newImages != null && !newImages.isEmpty()) {
+            for (MultipartFile imageFile : newImages) {
+                // S3에 새 이미지 업로드
+                String imageUrl = s3Uploader.upload(imageFile, "record-image");
+
+                // DB에 새 이미지 정보 저장
+                RecordImage newRecordImage = new RecordImage();
+                newRecordImage.setUrl(imageUrl);
+                newRecordImage.setQuestRecord(targetRecord.get());
+                recordImageRepository.save(newRecordImage);
+            }
+        }
+        return Map.of("status", "success");
+
+
+    }
+
+    // 레코드 삭제 메서드 (사용자 인증 정보, 레코드 아이디 필요)
+    @Transactional
+    public Map<String, String> deleteRecord(String authorization, Long recordId) throws AccessDeniedException {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Optional<QuestRecord> targetRecord = questRecordRepository.findById(recordId);
+
+
+        if (!targetRecord.get().getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("이 기록을 삭제할 권한이 없습니다.");
+        }
+
+        List<RecordImage> images = recordImageRepository.findByQuestRecord_Id(recordId);
+        for (RecordImage image : images) {
+            s3Uploader.deleteFile(image.getUrl());
+        }
+
+        questVerificationRepository.deleteAllByQuestRecord_Id(targetRecord.get().getId());
+        recordImageRepository.deleteAllByQuestRecord_Id(targetRecord.get().getId());
+        questRecordRepository.delete(targetRecord.get());
+        return Map.of("status", "success");
+
+    }
+
     // 수정 필요 함 아직 작성안함.
     public Map<String, String> updateQuest(String authorization, Long questId, QuestAddRequest questAddRequest) {
         Optional<Quest> target = questRepository.findById(questId);

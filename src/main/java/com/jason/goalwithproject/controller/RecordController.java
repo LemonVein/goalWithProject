@@ -1,9 +1,8 @@
 package com.jason.goalwithproject.controller;
 
-import com.jason.goalwithproject.dto.quest.CommentDto;
-import com.jason.goalwithproject.dto.quest.QuestRecordDto;
-import com.jason.goalwithproject.dto.quest.RecordAddRequest;
-import com.jason.goalwithproject.dto.quest.TeamQuestRecordDto;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -56,11 +55,32 @@ public class RecordController {
         return ResponseEntity.ok(result);
     }
 
+    // 팀 레코드에 다는 코멘트
     @PostMapping("/team/verifications/{recordId}")
     public ResponseEntity<Map<String, String>> addRecordComment(@RequestHeader("Authorization") String authorization, @PathVariable("recordId") Long recordId,
                                                                 @RequestBody CommentDto commentDto) {
         Map<String, String> result = questService.addRecordComment(authorization, recordId, commentDto.getComment());
         return ResponseEntity.ok(result);
+    }
 
+    @PutMapping("/team/{recordId}")
+    public ResponseEntity<Map<String, String>> editTeamRecord(@RequestHeader("Authorization") String authorization, @PathVariable("recordId") Long recordId,
+                                                              @RequestPart("text") String text,
+                                                              @RequestPart("existingImages") String existingimages,
+                                                              @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages ) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<String> images = objectMapper.readValue(existingimages, new TypeReference<List<String>>() {});
+
+        RecordUpdateDto recordUpdateDto = new RecordUpdateDto(text, images);
+        Map<String, String> result = questService.updateRecord(authorization, recordId, recordUpdateDto, newImages);
+
+        return ResponseEntity.ok(result);
+
+    }
+
+    @DeleteMapping("/team/{recordId}")
+    public ResponseEntity<Map<String, String>> deleteTeamRecord(@RequestHeader("Authorization") String authorization, @PathVariable("recordId") Long recordId) throws AccessDeniedException {
+        Map<String, String> result = questService.deleteRecord(authorization, recordId);
+        return ResponseEntity.ok(result);
     }
 }

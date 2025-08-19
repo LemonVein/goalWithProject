@@ -2,14 +2,16 @@ package com.jason.goalwithproject.domain.quest;
 
 import com.jason.goalwithproject.domain.user.User;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class QuestVerification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

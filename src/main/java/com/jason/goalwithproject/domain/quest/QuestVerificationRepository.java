@@ -8,4 +8,6 @@ import java.util.List;
 @Repository
 public interface QuestVerificationRepository extends JpaRepository<QuestVerification, Long> {
     List<QuestVerification> findAllByQuest_IdAndUser_Id(Long questId, Long userId);
+    List<QuestVerification> findAllByQuestRecord_Id(Long questRecordId);
+    List<QuestVerification> findAllByQuest_Id(Long questId);
 }

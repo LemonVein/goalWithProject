@@ -5,11 +5,17 @@ import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.team.TeamRepository;
 import com.jason.goalwithproject.domain.user.User;
+import com.jason.goalwithproject.domain.user.UserCharacter;
+import com.jason.goalwithproject.domain.user.UserCharacterRepository;
 import com.jason.goalwithproject.domain.user.UserRepository;
 import com.jason.goalwithproject.dto.quest.*;
+import com.jason.goalwithproject.dto.user.UserDto;
 import io.jsonwebtoken.Claims;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +24,7 @@ import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +35,12 @@ public class QuestService {
     private final TeamRepository teamRepository;
     private final QuestRecordRepository questRecordRepository;
     private final QuestVerificationRepository questVerificationRepository;
+    private final UserCharacterRepository userCharacterRepository;
     private final RecordImageRepository recordImageRepository;
     private final ReactionRepository reactionRepository;
     private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
+    private final DtoConverterService dtoConverterService;
 
     public QuestListDto findQuests(String authentication) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authentication);
@@ -275,6 +284,75 @@ public class QuestService {
         }
 
         return Map.of("status", "success");
+    }
+
+    @Transactional
+    public Page<TeamQuestRecordDto> getTeamQuestRecords(String authorization, int teamId, Pageable pageable) {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Quest teamQuest = questRepository.findByTeam_IdAndQuestStatus(teamId, QuestStatus.PROGRESS)
+                .orElseThrow(() -> new EntityNotFoundException("Team quest not found for teamId: " + teamId));
+
+        Page<QuestRecord> recordPage = questRecordRepository.findAllByQuest_Id(teamQuest.getId(), pageable);
+
+        return recordPage.map(record -> {
+            // 해당 기록에 달린 모든 인증(Verification)들을 조회합니다.
+            List<QuestVerification> verifications = questVerificationRepository.findAllByQuestRecord_Id(record.getId());
+            List<RecordCommentDto> verificationDtos = verifications.stream()
+                    .map(verification -> {
+                        User user = verification.getUser();
+                        String imageUrl = null;
+
+                        if (user != null) {
+                            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
+                            if (userCharacter != null && userCharacter.getCharacterImage() != null) {
+                                imageUrl = userCharacter.getCharacterImage().getImage();
+                            }
+                        }
+
+                        return RecordCommentDto.from(verification, imageUrl);
+                    })
+                    .collect(Collectors.toList());
+
+            List<RecordImage> imageRecords = recordImageRepository.findByQuestRecord_Id(record.getId());
+            List<String> images = new ArrayList<>();
+            for (RecordImage imageRecord : imageRecords) {
+                images.add(imageRecord.getUrl());
+            }
+
+            UserDto userDto = dtoConverterService.convertToDto(record.getUser());
+
+            return TeamQuestRecordDto.builder()
+                    .id(record.getId())
+                    .text(record.getText())
+                    .createdAt(record.getCreatedAt())
+                    .user(userDto)
+                    .verifications(verificationDtos)
+                    .images(images)
+                    .build();
+        });
+    }
+
+    public Map<String, String> addRecordComment(String authorization, Long recordId, String text) {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Optional<QuestRecord> targetRecord = questRecordRepository.findById(recordId);
+
+        Quest target = questRepository.findById(targetRecord.get().getQuest().getId()).orElse(null);
+
+        Optional<User> targetUser = userRepository.findById(userId);
+
+        questVerificationRepository.save(QuestVerification.builder().questRecord(targetRecord.get())
+                .user(targetUser.get())
+                .quest(target)
+                .comment(text)
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        return Map.of("status", "success");
+
     }
 
     // 수정 필요 함 아직 작성안함.

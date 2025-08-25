@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Setter
 @Builder
 public class RecordCommentDto {
+    private Long id;
     @JsonProperty("user_id")
     private Long userId;
     private String username;
@@ -21,6 +22,7 @@ public class RecordCommentDto {
 
     public static RecordCommentDto from(QuestVerification verification, String url) {
         return RecordCommentDto.builder()
+                .id(verification.getId())
                 .userId(verification.getUser().getId())
                 .username(verification.getUser().getNickName())
                 .text(verification.getComment())

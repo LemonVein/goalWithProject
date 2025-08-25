@@ -8,11 +8,14 @@ import com.jason.goalwithproject.dto.user.UserDto;
 import com.jason.goalwithproject.dto.user.UserLoginDto;
 import com.jason.goalwithproject.dto.user.UserRegisterDto;
 import io.jsonwebtoken.Claims;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -21,9 +24,11 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserTypeRepository userTypeRepository;
+    private final UserRefreshTokenRepository userRefreshTokenRepository;
     private final DtoConverterService dtoConverterService;
     private final JwtService jwtService;
 
+    @Transactional
     public TokenResponse TryLogin(UserLoginDto userLoginDto) {
         User user = userRepository.findByEmail(userLoginDto.getEmail()).orElse(null);
         if (user == null) {
@@ -40,6 +45,11 @@ public class UserService {
 
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
         String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
+        LocalDateTime expiryTime = LocalDateTime.now().plusSeconds(jwtTokenProvider.getREFRESH_EXPIRATION_TIME() / 1000);
+
+        userRefreshTokenRepository.findByUser_Id(user.getId())
+                .ifPresentOrElse(userRefreshToken -> userRefreshToken.updateToken(refreshToken, expiryTime),
+                        () -> userRefreshTokenRepository.save(new UserRefreshToken(user, refreshToken, expiryTime)));
 
         TokenResponse response = new TokenResponse(accessToken, refreshToken);
         return response;
@@ -84,6 +94,27 @@ public class UserService {
 
         UserDto dto = dtoConverterService.convertToDto(user);
         return dto;
+
+    }
+
+    @Transactional
+    public TokenResponse reissueToken(String refreshToken) {
+        Optional<UserRefreshToken> userRefreshToken = userRefreshTokenRepository.findByToken(refreshToken);
+        if (userRefreshToken.isEmpty()) {
+            throw new IllegalArgumentException("리프레쉬 토큰이 만료되었습니다");
+        }
+
+        UserRefreshToken userRefreshTokenEntity = userRefreshToken.get();
+        User targetUser = userRefreshTokenEntity.getUser();
+
+        Map<String, Object> claims = Map.of("userId", targetUser.getId());
+        String newAccessToken = jwtTokenProvider.generateAccessToken(claims);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(claims);
+        LocalDateTime newExpiryTime = LocalDateTime.now().plusSeconds(jwtTokenProvider.getREFRESH_EXPIRATION_TIME() / 1000);
+
+        userRefreshTokenEntity.updateToken(newRefreshToken, newExpiryTime);
+
+        return new TokenResponse(newAccessToken, newRefreshToken);
 
     }
 }

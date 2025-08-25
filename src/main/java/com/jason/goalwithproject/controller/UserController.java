@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.jwt.RefreshTokenDto;
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
 import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
 import com.jason.goalwithproject.dto.user.UserDto;
@@ -9,6 +10,8 @@ import com.jason.goalwithproject.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 
 @RestController
@@ -36,9 +39,12 @@ public class UserController {
         return ResponseEntity.ok(dto);
     }
 
-    // 게스트 로그인 잠정 보류
-//    public ResponseEntity<TokenResponseWithStatus> guestLogin(@RequestBody UserLoginDto userLoginDto) {
-//
-//    }
+
+    // refresh 토큰 재발급
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponse> refreshRefreshToken(@RequestBody RefreshTokenDto refreshTokenDto) {
+        TokenResponse token = userService.reissueToken(refreshTokenDto.getRefreshToken());
+        return ResponseEntity.ok(token);
+    }
 
 }

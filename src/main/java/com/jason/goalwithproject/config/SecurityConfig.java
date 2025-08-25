@@ -42,7 +42,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/user/login", "/api/user/register").permitAll()
+                        .requestMatchers("/api/user/login", "/api/user/register", "/api/user/refresh").permitAll()
                         .requestMatchers("/api/quest/{questId}/reactions").permitAll()
                         .anyRequest().authenticated()
                 )

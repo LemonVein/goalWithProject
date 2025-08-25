@@ -24,12 +24,14 @@ import java.util.Map;
 public class RecordController {
     private final QuestService questService;
 
+    // 해당 퀘스트의 레코드들 불러오기
     @GetMapping("/{questId}")
     public ResponseEntity<List<QuestRecordDto>> returnQuestRecord(@RequestHeader("Authorization") String authorization , @PathVariable Long questId) {
         List<QuestRecordDto> recordDtos = questService.getQuestRecordsWithQuestId(authorization, questId);
         return ResponseEntity.ok(recordDtos);
     }
 
+    // 해당 퀘스트의 레코드 생성
     @PostMapping("/create/{questId}")
     public ResponseEntity<Map<String, String>> createQuestRecord(@RequestHeader("Authorization") String authorization, @PathVariable Long questId,
     @RequestPart("text") String text, @RequestPart(name = "images", required = false) List<MultipartFile> images
@@ -38,6 +40,7 @@ public class RecordController {
         return ResponseEntity.ok(result);
     }
 
+    // 해당 팀의 메인 퀘스트 레코드 불러오기
     @GetMapping("/team/{teamId}")
     public ResponseEntity<Page<TeamQuestRecordDto>> getTeamQuestRecord(@RequestHeader("Authorization") String authorization, @PathVariable("teamId") int teamId,
     @PageableDefault(size = 5, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -63,6 +66,7 @@ public class RecordController {
         return ResponseEntity.ok(result);
     }
 
+    // 팀 레코드 수정
     @PutMapping("/team/{recordId}")
     public ResponseEntity<Map<String, String>> editTeamRecord(@RequestHeader("Authorization") String authorization, @PathVariable("recordId") Long recordId,
                                                               @RequestPart("text") String text,
@@ -78,9 +82,24 @@ public class RecordController {
 
     }
 
+    // 팀 레코드 삭제
     @DeleteMapping("/team/{recordId}")
     public ResponseEntity<Map<String, String>> deleteTeamRecord(@RequestHeader("Authorization") String authorization, @PathVariable("recordId") Long recordId) throws AccessDeniedException {
         Map<String, String> result = questService.deleteRecord(authorization, recordId);
+        return ResponseEntity.ok(result);
+    }
+
+    // 레코드 코멘트 수정
+    @PutMapping("/team/verification/{commentId}")
+    public ResponseEntity<Map<String, String>> updateComment(@RequestHeader("Authorization") String authorization, @PathVariable("commentId") Long commentId, @RequestBody CommentDto commentDto) throws AccessDeniedException {
+        Map<String, String> result = questService.updateComment(authorization, commentId, commentDto.getComment());
+        return ResponseEntity.ok(result);
+    }
+
+    // 레코드 코멘트 삭제
+    @DeleteMapping("/team/verification/{commentId}")
+    public ResponseEntity<Map<String, String>> deleteComment(@RequestHeader("Authorization") String authorization, @PathVariable("commentId") Long commentId) throws AccessDeniedException {
+        Map<String, String> result = questService.deleteComment(authorization, commentId);
         return ResponseEntity.ok(result);
     }
 }

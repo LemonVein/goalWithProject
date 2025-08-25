@@ -334,6 +334,7 @@ public class QuestService {
         });
     }
 
+    // 코멘트 작성
     public Map<String, String> addRecordComment(String authorization, Long recordId, String text) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
@@ -353,6 +354,40 @@ public class QuestService {
 
         return Map.of("status", "success");
 
+    }
+
+    // 댓글 수정
+    public Map<String, String> updateComment(String authorization, Long commentId, String text) throws AccessDeniedException {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Optional<QuestVerification> targetQuestVerification = questVerificationRepository.findById(commentId);
+
+        if (!targetQuestVerification.get().getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("이 코멘트를 수정할 권한이 없습니다.");
+        }
+
+        targetQuestVerification.get().setComment(text);
+
+        questVerificationRepository.save(targetQuestVerification.get());
+
+        return Map.of("status", "success");
+
+    }
+
+    // 댓글 삭제
+    public Map<String, String> deleteComment(String authorization, Long commentId) throws AccessDeniedException {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Optional<QuestVerification> targetQuestVerification = questVerificationRepository.findById(commentId);
+
+        if (!targetQuestVerification.get().getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("이 코멘트를 삭제할 권한이 없습니다.");
+        }
+
+        questVerificationRepository.delete(targetQuestVerification.get());
+        return Map.of("status", "success");
     }
 
     @Transactional
@@ -424,6 +459,8 @@ public class QuestService {
         return Map.of("status", "success");
 
     }
+
+
 
     // 수정 필요 함 아직 작성안함.
     public Map<String, String> updateQuest(String authorization, Long questId, QuestAddRequest questAddRequest) {

@@ -5,6 +5,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class JwtTokenProvider {
     private long EXPIRATION_TIME;
 
     @Value("${jwt.refresh-expiration}")
+    @Getter
     private long REFRESH_EXPIRATION_TIME;
 
     @PostConstruct

@@ -140,4 +140,31 @@ public class PeerService {
         }
         return Map.of("status", "failed");
     }
+
+    // 동료 신청 현황을 불러오는 메서드
+    @Transactional(readOnly = true)
+    public Page<RequesterDto> getMyPeerRequests(@RequestHeader String authorization, Pageable pageable) {
+        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
+        Long userId = Long.valueOf(claims.get("userId").toString());
+
+        Page<PeerShip> requestPage = peerShipRepository.findByRequester_IdAndStatus(
+                userId, PeerStatus.PENDING, pageable);
+
+        return requestPage.map(peerShip -> {
+            User requester = peerShip.getRequester(); // 요청을 보낸 사람(requester)의 정보를 가져옵니다.
+
+            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(requester.getId());
+            String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
+                    ? userCharacter.getCharacterImage().getImage()
+                    : null;
+
+            return RequesterDto.builder()
+                    .id(requester.getId())
+                    .name(requester.getNickName())
+                    .character(characterImageUrl)
+                    .userType(requester.getUserType().getName())
+                    .level(requester.getLevel())
+                    .build();
+        });
+    }
 }

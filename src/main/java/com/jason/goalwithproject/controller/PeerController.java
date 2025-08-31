@@ -47,10 +47,18 @@ public class PeerController {
         return ResponseEntity.ok(result);
     }
 
-    // 받은 요청 수락하기
+    // 받은 요청 거절하기
     @PostMapping("/reject/{userId}")
     public ResponseEntity<Map<String, String>> rejectPeer(@RequestHeader("Authorization") String authorization, @PathVariable Long userId) {
         Map<String, String> result = peerService.rejectPeerShip(authorization, userId);
+        return ResponseEntity.ok(result);
+    }
+
+    // 내가 요청한 동료요청 확인하기
+    @GetMapping("/requesting")
+    public ResponseEntity<Page<RequesterDto>> getMyPeerRequests(@RequestHeader("Authorization") String authorization,
+                                                                @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<RequesterDto> result = peerService.getMyPeerRequests(authorization, pageable);
         return ResponseEntity.ok(result);
     }
 }

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
+@Table(name = "peership")
 public class PeerShip {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

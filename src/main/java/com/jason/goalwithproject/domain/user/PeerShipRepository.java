@@ -12,6 +12,7 @@ import java.util.Optional;
 @Repository
 public interface PeerShipRepository extends JpaRepository<PeerShip, Long> {
     Page<PeerShip> findByAddressee_IdAndStatus(Long addresseeId, PeerStatus status, Pageable pageable);
+    Page<PeerShip> findByRequester_IdAndStatus(Long requesterId, PeerStatus status, Pageable pageable);
     @Query("SELECT p FROM PeerShip p WHERE (p.requester.id = :userId OR p.addressee.id = :userId) AND p.status = :status")
     Page<PeerShip> findMyPeers(
             @Param("userId") Long userId,

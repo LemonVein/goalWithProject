@@ -9,15 +9,19 @@ import lombok.Setter;
 @Setter
 @Builder
 public class RequesterDto {
-    @JsonProperty("requester_id")
+    @JsonProperty("id")
     private Long id;
-    @JsonProperty("requester_name")
+
+    @JsonProperty("nickname")
     private String name;
-    @JsonProperty("requester_character")
+
+    @JsonProperty("character")
     private String character;
-    @JsonProperty("requester_userType")
+
+    @JsonProperty("userType")
     private String userType;
-    @JsonProperty("requester_level")
+
+    @JsonProperty("level")
     private int level;
 
 }

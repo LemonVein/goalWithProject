@@ -3,11 +3,14 @@ package com.jason.goalwithproject.controller;
 import com.jason.goalwithproject.domain.quest.ReactionType;
 import com.jason.goalwithproject.dto.quest.QuestAddRequest;
 import com.jason.goalwithproject.dto.quest.QuestListDto;
+import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.Map;
 
 @RestController
@@ -52,9 +55,17 @@ public class QuestController {
         return ResponseEntity.ok(Map.of("suscess", "sss"));
     }
 
+    // 생성한 퀘스트 완료
+    @PutMapping("/complete/{questId}")
+    public ResponseEntity<Void> completeQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) throws AccessDeniedException {
+        questService.completeQuest(authorization, questId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 인증받을 퀘스트 목록 불러오기
 //    @GetMapping("/verification")
 //    public ResponseEntity<Page<QuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestParam(defaultValue = "0") int page) {
-//
+//        return throw new AccessDeniedException()
 //    }
 
 

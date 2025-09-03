@@ -476,6 +476,37 @@ public class QuestService {
         return Map.of("status", "failure");
     }
 
+    @Transactional
+    public Map<String, String> completeQuest(String authorization, Long questId) throws AccessDeniedException {
+        Long userId = jwtService.UserIdFromToken(authorization);
+
+        Quest targetQuest = questRepository.findById(questId)
+                .orElseThrow(() -> new EntityNotFoundException("해당 퀘스트를 찾을 수 없습니다. ID: " + questId));
+
+        Optional<Quest> target = questRepository.findById(questId);
+        if (!target.get().getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("이 퀘스트를 완료시킬 권한이 없습니다.");
+        }
+
+        if (target.get().isVerificationRequired()) {
+            if (target.get().getVerificationCount() >= target.get().getRequiredVerification()) {
+                target.get().setQuestStatus(QuestStatus.COMPLETE);
+                target.get().getUser().setExp(target.get().getUser().getExp() + 50);
+                target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + 50);
+            } else {
+                target.get().setQuestStatus(QuestStatus.VERIFY);
+            }
+        } else {
+            target.get().setQuestStatus(QuestStatus.COMPLETE);
+            target.get().getUser().setExp(target.get().getUser().getExp() + 50);
+            target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + 50);
+        }
+
+        questRepository.save(target.get());
+        return Map.of("status", "success");
+
+    }
+
 //    public Page<QuestVerifyResponseDto> getQuestVerifyWithPaging(@RequestParam(defaultValue = "0") int page) {
 //        Pageable pageable = PageRequest.of(page, 8, Sort.by("startDate").descending());
 //        Page<Quest> quests = questRepository.findAllByVerificationRequiredTrueAndQuestStatus_Verify(pageable);

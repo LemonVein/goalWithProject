@@ -21,6 +21,7 @@ public class DtoConverterService {
     private final QuestRecordRepository questRecordRepository;
     private final RecordImageRepository recordImageRepository;
 
+    // User 객체를 UserDto 로 변환해주는 메서드
     public UserDto convertToDto(User user) {
         if (user == null) return null;
         UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
@@ -40,6 +41,7 @@ public class DtoConverterService {
                 .build();
     }
 
+    // Quest 객체를 QuestResponseDto 로 변환해주는 메서드
     public QuestResponseDto convertToQuestDto(Quest quest) {
         if (quest == null) {
             return null;

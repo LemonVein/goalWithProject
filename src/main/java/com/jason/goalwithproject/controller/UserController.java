@@ -20,12 +20,14 @@ import java.util.Map;
 public class UserController {
     private final UserService userService;
 
+    // 로그인
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> TryLogin(@RequestBody UserLoginDto userLoginDto) {
         TokenResponse tokens = userService.TryLogin(userLoginDto);
         return ResponseEntity.ok(tokens);
     }
 
+    // 회원가입
     @PostMapping("/register")
     public ResponseEntity<TokenResponseWithStatus> signUp(@RequestBody UserRegisterDto userRegisterDto) {
         TokenResponseWithStatus tokens = userService.TrySignUp(userRegisterDto);

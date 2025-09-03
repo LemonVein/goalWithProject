@@ -151,19 +151,19 @@ public class PeerService {
                 userId, PeerStatus.PENDING, pageable);
 
         return requestPage.map(peerShip -> {
-            User requester = peerShip.getRequester(); // 요청을 보낸 사람(requester)의 정보를 가져옵니다.
+            User addressee = peerShip.getAddressee(); // 요청을 받은 사람(addressee)의 정보를 가져옵니다.
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(requester.getId());
+            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(addressee.getId());
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;
 
             return RequesterDto.builder()
-                    .id(requester.getId())
-                    .name(requester.getNickName())
+                    .id(addressee.getId())
+                    .name(addressee.getNickName())
                     .character(characterImageUrl)
-                    .userType(requester.getUserType().getName())
-                    .level(requester.getLevel())
+                    .userType(addressee.getUserType().getName())
+                    .level(addressee.getLevel())
                     .build();
         });
     }

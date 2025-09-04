@@ -7,6 +7,9 @@ import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +34,7 @@ public class QuestController {
         return ResponseEntity.ok(map);
     }
 
+    // 리액션 기능. 사실상 프론트에서 사용하지 않아 잠시 동결
     @GetMapping("/{questId}/reactions")
     public ResponseEntity<Map<ReactionType, Integer>> returnReactionCount(@PathVariable Long questId) {
         Map<ReactionType, Integer> reactionMap = questService.countReactions(questId);
@@ -62,10 +66,17 @@ public class QuestController {
         return ResponseEntity.noContent().build();
     }
 
-    // 인증받을 퀘스트 목록 불러오기
+    @PostMapping("/verification/{questId}")
+    public ResponseEntity<Void> verifyQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
+        questService.verifyQuest(authorization, questId);
+        return ResponseEntity.noContent().build();
+    }
+
+//    // 인증받을 퀘스트 목록 불러오기 보류 추천 알고리즘 작성해야함.
 //    @GetMapping("/verification")
-//    public ResponseEntity<Page<QuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestParam(defaultValue = "0") int page) {
-//        return throw new AccessDeniedException()
+//    public ResponseEntity<Page<QuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization,
+//                                                                                 @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+//
 //    }
 
 

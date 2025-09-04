@@ -507,54 +507,23 @@ public class QuestService {
 
     }
 
-//    public Page<QuestVerifyResponseDto> getQuestVerifyWithPaging(@RequestParam(defaultValue = "0") int page) {
-//        Pageable pageable = PageRequest.of(page, 8, Sort.by("startDate").descending());
-//        Page<Quest> quests = questRepository.findAllByVerificationRequiredTrueAndQuestStatus_Verify(pageable);
-//
-//        return quests.map(quest -> {
-//            // 사용자 정보
-//            User user = quest.getUser(); // 퀘스트 작성자
-//            QuestUserDto userDto = new QuestUserDto();
-//            userDto.setUserId(user.getId());
-//            userDto.setNickname(user.getNickName());
-//            userDto.setLevel(user.getLevel());
-//            userDto.setActionPoints(user.getActionPoint());
-//            userDto.setUserType(user.getUserType().getName());
-//            userDto.setAvatar(user.getAvatar());
-//            userDto.setBadge(user.getBadge());
-//
-//            // 기록 정보
-//            List<QuestRecord> records = questRecordRepository.findAllByQuest_Id(quest.getId());
-//            List<QuestRecordDto> recordDtos = records.stream().map(record -> {
-//                List<String> imageUrls = recordImageRepository.findByQuestRecord_Id(record.getId())
-//                        .stream()
-//                        .map(RecordImage::getUrl)
-//                        .toList();
-//                return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
-//            }).toList();
-//
-//            // 인증 정보
-//            List<QuestVerification> verifications = questVerificationRepository.findAllByQuest_Id(quest.getId());
-//            List<QuestVerificationDto> verificationDtos = verifications.stream()
-//                    .map(QuestVerificationDto::fromEntity)
-//                    .toList();
-//
-//            // 최종 DTO 조립
-//            QuestVerifyResponseDto dto = new QuestVerifyResponseDto();
-//            dto.setId(quest.getId());
-//            dto.setTitle(quest.getTitle());
-//            dto.setDescription(quest.getDescription());
-//            dto.setMain(quest.isMain());
-//            dto.setStartDate(quest.getStartDate());
-//            dto.setEndDate(quest.getEndDate());
-//            dto.setProcedure(quest.getQuestStatus());
-//            dto.setVerificationRequired(quest.isVerificationRequired());
-//            dto.setVerificationCount(verifications.size());
-//            dto.setRequiredVerification(quest.getVerificationCount());
-//            dto.setRecords(recordDtos);
-//            dto.setVerifications(verificationDtos);
-//            dto.setUser(userDto);
-//
-//            return dto;
+    @Transactional
+    public void verifyQuest(String authorization, Long questId) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+
+        Quest targetQuest = questRepository.findById(questId)
+                .orElseThrow(() -> new EntityNotFoundException("해당 퀘스트를 찾을 수 없습니다. ID: " + questId));
+
+        User verifyingUser = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
+
+        targetQuest.setVerificationCount(targetQuest.getVerificationCount() + 1);
+
+        verifyingUser.setExp(verifyingUser.getExp() + 5);
+    }
+
+//    // 인증할 만 한 퀘스트들 불러오기. 근데 추천 알고리즘 문제로 잠시 보류
+//    public Page<QuestVerifyResponseDto> getVerifyQuestWithPaging(String authorization, Pageable pageable) {
+//        Long userId = jwtService.UserIdFromToken(authorization);
 //    }
 }

@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // EntityNotFoundException 를 처리하는 핸들러
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorDto> handleEntityNotFoundException(EntityNotFoundException ex) {
         ErrorDto errorResponse = new ErrorDto(ex.getMessage(), HttpStatus.NOT_FOUND.value());
@@ -27,7 +29,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
     }
 
-    // 특정 예외(IllegalArgumentException)를 처리하는 핸들러
+    // IllegalArgumentException 를 처리하는 핸들러
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorDto> handleIllegalArgumentException(IllegalArgumentException ex) {
         ErrorDto errorResponse = new ErrorDto(ex.getMessage(), HttpStatus.BAD_REQUEST.value());
@@ -35,7 +37,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    // 위에서 정의하지 않은 모든 나머지 예외를 처리하는 핸들러
+    // 그 외 예외를 처리하는 핸들러
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDto> handleException(Exception ex) {
         log.error("Unhandled exception occurred", ex);

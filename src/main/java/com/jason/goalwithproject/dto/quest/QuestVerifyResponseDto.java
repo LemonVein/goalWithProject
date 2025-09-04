@@ -2,6 +2,7 @@ package com.jason.goalwithproject.dto.quest;
 
 import com.jason.goalwithproject.domain.quest.QuestStatus;
 import com.jason.goalwithproject.dto.user.QuestUserDto;
+import com.jason.goalwithproject.dto.user.UserDto;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,5 +25,5 @@ public class QuestVerifyResponseDto {
     private int requiredVerification;
     private List<QuestRecordDto> records;
     private List<QuestVerificationDto> verifications;
-    private QuestUserDto user;
+    private UserDto user;
 }

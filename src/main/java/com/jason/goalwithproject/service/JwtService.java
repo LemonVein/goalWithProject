@@ -47,6 +47,7 @@ public class JwtService {
         }
     }
 
+    // 나중에 위에 메서드를 private 로 돌리고 모든 메서드가 UserIdFromToken 를 사용하게 할 것임.
     public Long UserIdFromToken(String authorizationHeader) {
         Claims claims = extractClaimsFromAuthorizationHeader(authorizationHeader);
         if (claims == null) {

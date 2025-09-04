@@ -151,7 +151,7 @@ public class PeerService {
                 userId, PeerStatus.PENDING, pageable);
 
         return requestPage.map(peerShip -> {
-            User addressee = peerShip.getAddressee(); // 요청을 받은 사람(addressee)의 정보를 가져옵니다.
+            User addressee = peerShip.getAddressee(); // 요청을 받은 사람(addressee)의 정보를 가져온다.
 
             UserCharacter userCharacter = userCharacterRepository.findByUser_Id(addressee.getId());
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)

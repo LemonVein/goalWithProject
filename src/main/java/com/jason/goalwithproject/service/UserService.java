@@ -4,14 +4,17 @@ import com.jason.goalwithproject.config.JwtTokenProvider;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
 import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
+import com.jason.goalwithproject.dto.peer.RequesterDto;
 import com.jason.goalwithproject.dto.user.UserDto;
 import com.jason.goalwithproject.dto.user.UserLoginDto;
 import com.jason.goalwithproject.dto.user.UserRegisterDto;
 import io.jsonwebtoken.Claims;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -25,6 +28,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserTypeRepository userTypeRepository;
     private final UserRefreshTokenRepository userRefreshTokenRepository;
+    private final UserCharacterRepository userCharacterRepository;
     private final DtoConverterService dtoConverterService;
     private final JwtService jwtService;
 
@@ -116,5 +120,34 @@ public class UserService {
 
         return new TokenResponse(newAccessToken, newRefreshToken);
 
+    }
+
+    // 이름으로 유저들을 검색하는 메서드
+    @Transactional(readOnly = true)
+    public Page<RequesterDto> searchUsers(String authorization, String keyword, Pageable pageable) {
+        Long currentUserId = jwtService.UserIdFromToken(authorization);
+
+        Page<User> userPage = userRepository.findByNameContaining(keyword, pageable);
+
+        return userPage.map(user -> {
+            // ★★★ 검색 결과에서 자기 자신은 제외합니다 ★★★
+            if (user.getId().equals(currentUserId)) {
+                return null; // null을 반환하면 최종 결과에서 자동으로 제외됩니다.
+            }
+
+            // 캐릭터 정보를 조회합니다.
+            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
+            String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
+                    ? userCharacter.getCharacterImage().getImage()
+                    : null;
+
+            return RequesterDto.builder()
+                    .id(user.getId())
+                    .name(user.getNickName())
+                    .character(characterImageUrl)
+                    .userType(user.getUserType().getName())
+                    .level(user.getLevel())
+                    .build();
+        });
     }
 }

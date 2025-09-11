@@ -14,7 +14,10 @@ import com.jason.goalwithproject.dto.team.TeamResponseDto;
 import com.jason.goalwithproject.dto.user.UserDto;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 import java.nio.file.AccessDeniedException;
@@ -156,6 +159,42 @@ public class TeamService {
             teamRepository.save(targetTeam);
             return Map.of("status", "success");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TeamResponseDto> searchTeams(String keyword, Pageable pageable) {
+        Page<Team> teamPage = teamRepository.findByNameOrQuestTitle(keyword, pageable);
+
+        List<Team> teams = teamPage.getContent();
+        List<Integer> teamIds = teams.stream().map(Team::getId).collect(Collectors.toList());
+
+        Map<Integer, List<UserDto>> membersMap = userTeamRepository.findByTeam_IdIn(teamIds).stream()
+                .collect(Collectors.groupingBy(
+                        ut -> ut.getTeam().getId(),
+                        Collectors.mapping(ut -> dtoConverterService.convertToDto(ut.getUser()), Collectors.toList())
+                ));
+
+        Map<Integer, Quest> questsMap = questRepository.findByTeam_IdIn(teamIds).stream()
+                .collect(Collectors.toMap(q -> q.getTeam().getId(), q -> q));
+
+
+        return teamPage.map(team -> {
+            UserDto leaderDto = dtoConverterService.convertToDto(team.getLeader());
+            List<UserDto> members = membersMap.getOrDefault(team.getId(), List.of());
+            Quest teamQuest = questsMap.get(team.getId());
+            QuestResponseDto teamQuestDto = dtoConverterService.convertToQuestDto(teamQuest);
+
+            return TeamResponseDto.builder()
+                    .id(team.getId())
+                    .name(team.getName())
+                    .description(team.getDescription())
+                    .leader(leaderDto)
+                    .members(members)
+                    .teamQuest(teamQuestDto)
+                    .createdAt(team.getCreatedAt())
+                    .isPublic(team.isPublic())
+                    .build();
+        });
     }
 
 

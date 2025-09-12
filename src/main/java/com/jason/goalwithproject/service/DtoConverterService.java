@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +25,7 @@ public class DtoConverterService {
     // User 객체를 UserDto 로 변환해주는 메서드
     public UserDto convertToDto(User user) {
         if (user == null) return null;
-        UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
+        Optional<UserCharacter> userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(user.getId(), true);
         UserBadge userBadge = userBadgeRepository.findByUser_Id(user.getId());
 
 
@@ -35,7 +36,7 @@ public class DtoConverterService {
                 .level(user.getLevel())
                 .actionPoints(user.getActionPoint())
                 .userType(user.getUserType().getName())
-                .character(userCharacter.getCharacterImage().getImage())
+                .character(userCharacter.get().getCharacterImage().getImage())
                 .badge(userBadge.getBadge().getImageUrl())
                 .exp(user.getExp())
                 .build();

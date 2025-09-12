@@ -2,6 +2,7 @@ package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.config.JwtTokenProvider;
 import com.jason.goalwithproject.domain.user.*;
+import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
 import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
@@ -16,8 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -122,6 +126,23 @@ public class UserService {
 
     }
 
+    // 유저가 가진 캐릭터들을 리턴하는 메서드
+    @Transactional(readOnly = true)
+    public Page<CharacterDto> getCharacters(String authorization, Long userId, Pageable pageable) throws AccessDeniedException {
+        Long authUserId = jwtService.UserIdFromToken(authorization);
+
+        if (!Objects.equals(authUserId, userId)) {
+            throw new AccessDeniedException("캐릭터를 불러올 권한이 없습니다.");
+        }
+
+        Page<UserCharacter> userCharacters = userCharacterRepository.findAllByUser_Id(userId, pageable);
+
+        Page<CharacterDto> dtos = userCharacters.map(CharacterDto::new);
+
+        return dtos;
+
+    }
+
     // 이름으로 유저들을 검색하는 메서드
     @Transactional(readOnly = true)
     public Page<RequesterDto> searchUsers(String authorization, String keyword, Pageable pageable) {
@@ -136,7 +157,7 @@ public class UserService {
             }
 
             // 캐릭터 정보를 조회합니다.
-            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
+            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(user.getId(), true).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;

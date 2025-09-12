@@ -63,7 +63,7 @@ public class PeerService {
                 peerUser = peerShip.getRequester();
             }
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(peerUser.getId());
+            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(peerUser.getId(), true).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;
@@ -90,7 +90,7 @@ public class PeerService {
         return requestPage.map(peerShip -> {
             User requester = peerShip.getRequester(); // 요청을 보낸 사람(requester)의 정보를 가져옵니다.
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(requester.getId());
+            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(requester.getId(), true).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;
@@ -153,7 +153,7 @@ public class PeerService {
         return requestPage.map(peerShip -> {
             User addressee = peerShip.getAddressee(); // 요청을 받은 사람(addressee)의 정보를 가져온다.
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(addressee.getId());
+            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(addressee.getId(), true).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;

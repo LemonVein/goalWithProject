@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.jwt.RefreshTokenDto;
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
 import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
@@ -8,9 +9,12 @@ import com.jason.goalwithproject.dto.user.UserLoginDto;
 import com.jason.goalwithproject.dto.user.UserRegisterDto;
 import com.jason.goalwithproject.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.Map;
 
 
@@ -39,6 +43,13 @@ public class UserController {
     public ResponseEntity<UserDto> GetUserInfo(@RequestHeader("Authorization") String authorization) {
         UserDto dto = userService.getUserInfo(authorization);
         return ResponseEntity.ok(dto);
+    }
+
+    // 유저가 가지고 있는 캐릭터들 조회
+    @GetMapping("/characters/{userId}")
+    public ResponseEntity<Page<CharacterDto>> GetCharacters(@RequestHeader("Authorization") String authorization, @PathVariable("userId") Long userId, Pageable pageable) throws AccessDeniedException {
+        Page<CharacterDto> dtos = userService.getCharacters(authorization, userId, pageable);
+        return ResponseEntity.ok(dtos);
     }
 
 

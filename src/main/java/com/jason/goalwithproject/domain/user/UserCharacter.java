@@ -27,4 +27,7 @@ public class UserCharacter {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "character_id", referencedColumnName = "id")
     private CharacterImage characterImage;
+
+    @Column(name = "is_equipped")
+    private boolean isEquipped = false;
 }

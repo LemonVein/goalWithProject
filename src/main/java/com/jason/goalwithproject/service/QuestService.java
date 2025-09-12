@@ -305,7 +305,7 @@ public class QuestService {
                         String imageUrl = null;
 
                         if (user != null) {
-                            UserCharacter userCharacter = userCharacterRepository.findByUser_Id(user.getId());
+                            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(user.getId(), true).get();
                             if (userCharacter != null && userCharacter.getCharacterImage() != null) {
                                 imageUrl = userCharacter.getCharacterImage().getImage();
                             }

@@ -1,9 +1,7 @@
 package com.jason.goalwithproject.controller;
 
-import com.jason.goalwithproject.domain.user.User;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
-import com.jason.goalwithproject.dto.user.UserDto;
 import com.jason.goalwithproject.service.TeamService;
 import com.jason.goalwithproject.service.UserService;
 import lombok.RequiredArgsConstructor;

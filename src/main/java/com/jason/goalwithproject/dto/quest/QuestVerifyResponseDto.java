@@ -3,6 +3,7 @@ package com.jason.goalwithproject.dto.quest;
 import com.jason.goalwithproject.domain.quest.QuestStatus;
 import com.jason.goalwithproject.dto.user.QuestUserDto;
 import com.jason.goalwithproject.dto.user.UserDto;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,6 +13,7 @@ import java.util.List;
 // 인증 받을 퀘스트 목록을 불러올 때 사용하는 DTO 입니다.
 @Getter
 @Setter
+@Builder
 public class QuestVerifyResponseDto {
     private Long id;
     private String title;

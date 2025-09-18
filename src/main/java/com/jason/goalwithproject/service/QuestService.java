@@ -12,16 +12,18 @@ import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.dto.user.UserDto;
 import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -305,7 +307,7 @@ public class QuestService {
                         String imageUrl = null;
 
                         if (user != null) {
-                            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(user.getId(), true).get();
+                            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(user.getId()).get();
                             if (userCharacter != null && userCharacter.getCharacterImage() != null) {
                                 imageUrl = userCharacter.getCharacterImage().getImage();
                             }
@@ -477,7 +479,7 @@ public class QuestService {
     }
 
     @Transactional
-    public Map<String, String> completeQuest(String authorization, Long questId) throws AccessDeniedException {
+    public void completeQuest(String authorization, Long questId) throws AccessDeniedException {
         Long userId = jwtService.UserIdFromToken(authorization);
 
         Quest targetQuest = questRepository.findById(questId)
@@ -491,19 +493,79 @@ public class QuestService {
         if (target.get().isVerificationRequired()) {
             if (target.get().getVerificationCount() >= target.get().getRequiredVerification()) {
                 target.get().setQuestStatus(QuestStatus.COMPLETE);
-                target.get().getUser().setExp(target.get().getUser().getExp() + 50);
-                target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + 50);
+
+                // action point 계산
+                int actionScore = 0;
+                actionScore += 10;
+
+
+                // exp score 계산 방식
+                int score = 0;
+                Duration duration = Duration.between(target.get().getStartDate(), target.get().getEndDate());
+                long durationDays = duration.toDays();
+                score += (int) (durationDays * 3);
+                score += (questRecordRepository.countByQuest_Id(target.get().getId()) * 5);
+                score += 10;
+
+                if (target.get().isMain()) {
+                    score *= 2;
+                    actionScore += 20;
+                }
+
+                // 최소 인증수를 넘긴 사람들을 위한 계산식
+                score += (target.get().getRequiredVerification() * 5) + (target.get().getVerificationCount() - target.get().getRequiredVerification());
+                actionScore += (target.get().getRequiredVerification() * 2) + (target.get().getVerificationCount() - target.get().getRequiredVerification());
+
+                target.get().getUser().setExp(target.get().getUser().getExp() + score);
+                target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
             } else {
+
+                // action point 계산
+                int actionScore = 0;
+                actionScore += 10;
+
+                // exp score 계산 방식
+                int score = 0;
+                Duration duration = Duration.between(target.get().getStartDate(), target.get().getEndDate());
+                long durationDays = duration.toDays();
+                score += (int) (durationDays * 3);
+                score += (questRecordRepository.countByQuest_Id(target.get().getId()) * 5);
+                score += 10;
+
+                if (target.get().isMain()) {
+                    score *= 2;
+                    actionScore += 20;
+                }
+
                 target.get().setQuestStatus(QuestStatus.VERIFY);
+
+                target.get().getUser().setExp(target.get().getUser().getExp() + score);
+                target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
             }
         } else {
+            // action point 계산
+            int actionScore = 0;
+            actionScore += 10;
+
+            // exp score 계산 방식
+            int score = 0;
+            Duration duration = Duration.between(target.get().getStartDate(), target.get().getEndDate());
+            long durationDays = duration.toDays();
+            score += (int) (durationDays * 3);
+            score += (questRecordRepository.countByQuest_Id(target.get().getId()) * 5);
+            score += 10;
+
+            if (target.get().isMain()) {
+                score *= 2;
+                actionScore += 20;
+            }
+
             target.get().setQuestStatus(QuestStatus.COMPLETE);
-            target.get().getUser().setExp(target.get().getUser().getExp() + 50);
-            target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + 50);
+            target.get().getUser().setExp(target.get().getUser().getExp() + score);
+            target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
         }
 
         questRepository.save(target.get());
-        return Map.of("status", "success");
 
     }
 
@@ -519,11 +581,61 @@ public class QuestService {
 
         targetQuest.setVerificationCount(targetQuest.getVerificationCount() + 1);
 
-        verifyingUser.setExp(verifyingUser.getExp() + 5);
+        verifyingUser.setExp(verifyingUser.getExp() + 10);
     }
 
-//    // 인증할 만 한 퀘스트들 불러오기. 근데 추천 알고리즘 문제로 잠시 보류
-//    public Page<QuestVerifyResponseDto> getVerifyQuestWithPaging(String authorization, Pageable pageable) {
-//        Long userId = jwtService.UserIdFromToken(authorization);
-//    }
+    @Transactional(readOnly = true)
+    public Page<QuestVerifyResponseDto> getRecommendedQuestsForVerification(String authorization, Pageable pageable) {
+        Long currentUserId = jwtService.UserIdFromToken(authorization);
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        List<Quest> candidates = questRepository.findAllByVerificationRequiredTrueAndQuestStatus(
+                QuestStatus.VERIFY);
+
+        // 각 퀘스트의 '추천 점수'를 계산하고, 퀘스트와 점수를 함께 저장합니다.
+        List<QuestWithScore> scoredQuests = candidates.stream()
+                // 본인이 작성한 퀘스트는 제외
+                .filter(quest -> !quest.getUser().getId().equals(currentUserId))
+                .map(quest -> {
+                    double score = calculateRecommendationScore(currentUser, quest.getUser());
+                    return new QuestWithScore(quest, score);
+                })
+                .collect(Collectors.toList());
+
+        // 추천 점수가 높은 순서대로 정렬합니다.
+        scoredQuests.sort(Comparator.comparingDouble(QuestWithScore::getScore).reversed());
+
+        // 정렬된 리스트를 수동으로 페이지네이션합니다.
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), scoredQuests.size());
+        List<Quest> pagedResult = scoredQuests.subList(start, end).stream()
+                .map(QuestWithScore::getQuest)
+                .collect(Collectors.toList());
+
+        Page<Quest> questPage = new PageImpl<>(pagedResult, pageable, scoredQuests.size());
+
+        Page<QuestVerifyResponseDto> result = questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+
+        return result;
+    }
+
+    // 추천 점수 계산 헬퍼 메서드
+    private double calculateRecommendationScore(User currentUser, User questOwner) {
+        double score = 0;
+
+        // 레벨 유사도 점수 (차이가 적을수록 높음, 최대 50점)
+        int levelDifference = Math.abs(currentUser.getLevel() - questOwner.getLevel());
+        score += Math.max(0, 50 - (levelDifference * 5));
+
+        // 유저 타입 일치 점수
+        if (currentUser.getUserType().getId() == questOwner.getUserType().getId()) {
+            score += 30;
+        }
+
+        // 액션 포인트 점수 (10점당 1점)
+        score += (questOwner.getActionPoint() / 10.0);
+
+        return score;
+    }
 }

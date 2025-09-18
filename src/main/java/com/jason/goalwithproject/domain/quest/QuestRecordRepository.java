@@ -13,4 +13,5 @@ public interface QuestRecordRepository extends JpaRepository<QuestRecord, Long> 
     Optional<QuestRecord> findByQuest_Id(Long id);
     Page<QuestRecord> findAllByQuest_Id(Long id, Pageable pageable);
     List<QuestRecord> findAllByQuest_Id(Long id);
+    int countByQuest_Id(Long questId);
 }

@@ -53,12 +53,6 @@ public class QuestController {
         return ResponseEntity.ok(resultMap);
     }
 
-    // 수정 필요 퀘스트 인증 수행 컨트롤러
-    @PostMapping("/verification/{questId}")
-    public ResponseEntity<Map<String, String>> verifyQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody String comment) {
-        return ResponseEntity.ok(Map.of("suscess", "sss"));
-    }
-
     // 생성한 퀘스트 완료
     @PutMapping("/complete/{questId}")
     public ResponseEntity<Void> completeQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) throws AccessDeniedException {
@@ -66,18 +60,20 @@ public class QuestController {
         return ResponseEntity.noContent().build();
     }
 
+    // 인증 수행 컨트롤러
     @PostMapping("/verification/{questId}")
     public ResponseEntity<Void> verifyQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
         questService.verifyQuest(authorization, questId);
         return ResponseEntity.noContent().build();
     }
 
-//    // 인증받을 퀘스트 목록 불러오기 보류 추천 알고리즘 작성해야함.
-//    @GetMapping("/verification")
-//    public ResponseEntity<Page<QuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization,
-//                                                                                 @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-//
-//    }
+    // 인증받을 퀘스트 목록 불러오기
+    @GetMapping("/verification")
+    public ResponseEntity<Page<QuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<QuestVerifyResponseDto> result = questService.getRecommendedQuestsForVerification(authorization, pageable);
+        return ResponseEntity.ok(result);
+
+    }
 
 
 

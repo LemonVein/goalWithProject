@@ -5,4 +5,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CharacterImageRepository extends JpaRepository<CharacterImage, Integer> {
+    CharacterImage findById(int id);
 }

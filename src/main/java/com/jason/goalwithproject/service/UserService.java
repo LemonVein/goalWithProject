@@ -1,6 +1,8 @@
 package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.config.JwtTokenProvider;
+import com.jason.goalwithproject.domain.custom.BadgeRepository;
+import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
@@ -33,7 +35,10 @@ public class UserService {
     private final UserTypeRepository userTypeRepository;
     private final UserRefreshTokenRepository userRefreshTokenRepository;
     private final UserCharacterRepository userCharacterRepository;
+    private final CharacterImageRepository characterImageRepository;
+    private final UserBadgeRepository userBadgeRepository;
     private final DtoConverterService dtoConverterService;
+    private final BadgeRepository badgeRepository;
     private final JwtService jwtService;
 
     @Transactional
@@ -82,6 +87,20 @@ public class UserService {
         );
 
         User saveUser = userRepository.save(user);
+
+        // 유저 기본 캐릭터 설정. 1번 캐릭터 기본 피코
+        UserCharacter userCharacter = new UserCharacter();
+        userCharacter.setUser(user);
+        userCharacter.setCharacterImage(characterImageRepository.findById(1));
+        userCharacter.setEquipped(true);
+        userCharacterRepository.save(userCharacter);
+
+        // 유저 기본 뱃지 설정. 1번 캐릭터
+        UserBadge userBadge = new UserBadge();
+        userBadge.setUser(user);
+        userBadge.setBadge(badgeRepository.findById(1).get());
+        userBadgeRepository.save(userBadge);
+
         Map<String, Object> claims = Map.of(
                 "userId", saveUser.getId()
         );
@@ -148,19 +167,17 @@ public class UserService {
     public Page<RequesterDto> searchUsers(String authorization, String keyword, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
 
-        Page<User> userPage = userRepository.findByNameContaining(keyword, pageable);
+        Page<User> userPage = userRepository.findByNickNameContaining(keyword, pageable);
 
         return userPage.map(user -> {
-            // ★★★ 검색 결과에서 자기 자신은 제외합니다 ★★★
             if (user.getId().equals(currentUserId)) {
-                return null; // null을 반환하면 최종 결과에서 자동으로 제외됩니다.
+                return null; // null 을 반환하면 최종 결과에서 자동으로 제외됩니다.
             }
 
             // 캐릭터 정보를 조회합니다.
-            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(user.getId(), true).get();
-            String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
-                    ? userCharacter.getCharacterImage().getImage()
-                    : null;
+            String characterImageUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(user.getId())
+                    .map(userCharacter -> userCharacter.getCharacterImage().getImage()) // 값이 있으면 이미지 URL을 꺼내고
+                    .orElse(null);
 
             return RequesterDto.builder()
                     .id(user.getId())

@@ -1,18 +1,28 @@
 package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.config.JwtTokenProvider;
+import com.jason.goalwithproject.domain.quest.Quest;
+import com.jason.goalwithproject.domain.quest.QuestStatus;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
+import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
+import com.jason.goalwithproject.dto.quest.QuestWithScore;
+import com.jason.goalwithproject.dto.user.UserWithScore;
 import io.jsonwebtoken.Claims;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestHeader;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +31,7 @@ public class PeerService {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserCharacterRepository userCharacterRepository;
+    private final DtoConverterService dtoConverterService;
     private final JwtService jwtService;
 
     // peer 요청 로직
@@ -63,7 +74,7 @@ public class PeerService {
                 peerUser = peerShip.getRequester();
             }
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(peerUser.getId(), true).get();
+            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(peerUser.getId()).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;
@@ -90,7 +101,7 @@ public class PeerService {
         return requestPage.map(peerShip -> {
             User requester = peerShip.getRequester(); // 요청을 보낸 사람(requester)의 정보를 가져옵니다.
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(requester.getId(), true).get();
+            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(requester.getId()).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;
@@ -153,7 +164,7 @@ public class PeerService {
         return requestPage.map(peerShip -> {
             User addressee = peerShip.getAddressee(); // 요청을 받은 사람(addressee)의 정보를 가져온다.
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndEquippedTrue(addressee.getId(), true).get();
+            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(addressee.getId()).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
                     ? userCharacter.getCharacterImage().getImage()
                     : null;
@@ -166,5 +177,59 @@ public class PeerService {
                     .level(addressee.getLevel())
                     .build();
         });
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RequesterDto> getRecommendedUsers(String authorization, Pageable pageable) {
+        Long currentUserId = jwtService.UserIdFromToken(authorization);
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        List<User> fullUsers = userRepository.findAllByUserType(currentUser.getUserType());
+
+        // 각 유저의 '추천 점수'를 계산하고, 유저와 점수를 함께 저장합니다.
+        List<UserWithScore> scoredUsers = fullUsers.stream()
+                // 본인이 작성한 퀘스트는 제외
+                .filter(user -> !user.getId().equals(currentUserId))
+                .map(user -> {
+                    double score = calculateRecommendationScore(currentUser, user);
+                    return new UserWithScore(user, score);
+                })
+                .collect(Collectors.toList());
+
+        // 추천 점수가 높은 순서대로 정렬합니다.
+        scoredUsers.sort(Comparator.comparingDouble(UserWithScore::getScore).reversed());
+
+        // 정렬된 리스트를 수동으로 페이지네이션합니다.
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), scoredUsers.size());
+        List<User> pagedResult = scoredUsers.subList(start, end).stream()
+                .map(UserWithScore::getUser)
+                .collect(Collectors.toList());
+
+        Page<User> peerPage = new PageImpl<>(pagedResult, pageable, scoredUsers.size());
+
+        Page<RequesterDto> result = peerPage.map(dtoConverterService::convertToRequesterDto);
+
+        return result;
+    }
+
+    // 추천 점수 계산 헬퍼 메서드
+    private double calculateRecommendationScore(User currentUser, User otherUser) {
+        double score = 0;
+
+        // 레벨 유사도 점수 (차이가 적을수록 높음, 최대 50점)
+        int levelDifference = Math.abs(currentUser.getLevel() - otherUser.getLevel());
+        score += Math.max(0, 50 - (levelDifference * 5));
+
+        // 유저 타입 일치 점수
+        if (currentUser.getUserType().getId() == otherUser.getUserType().getId()) {
+            score += 30;
+        }
+
+        // 액션 포인트 점수 (10점당 1점)
+        score += (otherUser.getActionPoint() / 10.0);
+
+        return score;
     }
 }

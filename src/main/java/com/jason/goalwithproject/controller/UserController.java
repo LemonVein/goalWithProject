@@ -11,6 +11,7 @@ import com.jason.goalwithproject.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,7 +48,8 @@ public class UserController {
 
     // 유저가 가지고 있는 캐릭터들 조회
     @GetMapping("/characters/{userId}")
-    public ResponseEntity<Page<CharacterDto>> GetCharacters(@RequestHeader("Authorization") String authorization, @PathVariable("userId") Long userId, Pageable pageable) throws AccessDeniedException {
+    public ResponseEntity<Page<CharacterDto>> GetCharacters(@RequestHeader("Authorization") String authorization, @PathVariable("userId") Long userId,
+                                                            @PageableDefault(size = 5) Pageable pageable) throws AccessDeniedException {
         Page<CharacterDto> dtos = userService.getCharacters(authorization, userId, pageable);
         return ResponseEntity.ok(dtos);
     }

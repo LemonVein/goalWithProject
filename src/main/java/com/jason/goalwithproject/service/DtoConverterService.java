@@ -1,12 +1,11 @@
 package com.jason.goalwithproject.service;
 
+import com.jason.goalwithproject.domain.custom.CharacterImage;
+import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
-import com.jason.goalwithproject.dto.quest.QuestRecordDto;
-import com.jason.goalwithproject.dto.quest.QuestResponseDto;
-import com.jason.goalwithproject.dto.quest.QuestVerificationDto;
-import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
+import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.dto.user.UserDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DtoConverterService {
     private final UserCharacterRepository userCharacterRepository;
+    private final CharacterImageRepository characterImageRepository;
     private final UserBadgeRepository userBadgeRepository;
     private final QuestRepository questRepository;
     private final UserRepository userRepository;
@@ -117,10 +117,13 @@ public class DtoConverterService {
             return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
         }).toList();
 
-        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_IdAndUser_Id(quest.getId(), quest.getUser().getId());
+        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_Id(quest.getId());
 
-        List<QuestVerificationDto> questVerificationDtos = questVerifications.stream()
-                .map(QuestVerificationDto::fromEntity)
+        List<RecordCommentDto> questVerificationDtos = questVerifications.stream()
+                .map(questVerification -> {
+                    Optional<UserCharacter> uc = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId());
+                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage());
+                })
                 .toList();
 
         return QuestVerifyResponseDto.builder()

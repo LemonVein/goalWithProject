@@ -64,8 +64,7 @@ public class PeerController {
 
     // 추천 유저 불러오기
     @GetMapping("/recommend")
-    public ResponseEntity<Page<RequesterDto>> getRecommendedUsers(@RequestHeader("Authorization") String authorization,
-                                                                  @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+    public ResponseEntity<Page<RequesterDto>> getRecommendedUsers(@RequestHeader("Authorization") String authorization, Pageable pageable) {
         Page<RequesterDto> result = peerService.getRecommendedUsers(authorization, pageable);
         return ResponseEntity.ok(result);
     }

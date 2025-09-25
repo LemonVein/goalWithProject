@@ -1,6 +1,7 @@
 package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.domain.quest.ReactionType;
+import com.jason.goalwithproject.dto.quest.CommentDto;
 import com.jason.goalwithproject.dto.quest.QuestAddRequest;
 import com.jason.goalwithproject.dto.quest.QuestListDto;
 import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
@@ -47,6 +48,7 @@ public class QuestController {
         return ResponseEntity.ok(questService.updateQuest(authorization, questId, questAddRequest)); // 수정 필요 보류
     }
 
+    //
     @DeleteMapping("/{questId}")
     public ResponseEntity<Map<String, String>> deleteQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
         Map<String, String> resultMap = questService.deleteQuestWithQuestId(questId);
@@ -62,8 +64,8 @@ public class QuestController {
 
     // 인증 수행 컨트롤러
     @PostMapping("/verification/{questId}")
-    public ResponseEntity<Void> verifyQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
-        questService.verifyQuest(authorization, questId);
+    public ResponseEntity<Void> verifyQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody CommentDto commentDto) throws AccessDeniedException {
+        questService.verifyQuest(authorization, questId, commentDto);
         return ResponseEntity.noContent().build();
     }
 
@@ -74,8 +76,6 @@ public class QuestController {
         return ResponseEntity.ok(result);
 
     }
-
-
 
 
 }

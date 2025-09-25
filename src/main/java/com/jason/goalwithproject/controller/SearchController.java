@@ -1,7 +1,9 @@
 package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.dto.peer.RequesterDto;
+import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
+import com.jason.goalwithproject.service.QuestService;
 import com.jason.goalwithproject.service.TeamService;
 import com.jason.goalwithproject.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class SearchController {
     private final UserService userService;
     private final TeamService teamService;
+    private final QuestService questService;
 
     // 키워드로 유저 찾기
     @GetMapping("/user")
@@ -26,12 +29,15 @@ public class SearchController {
 
     // 키워드로 팀 찾기
     @GetMapping("/team")
-    public ResponseEntity<Page<TeamResponseDto>> getSearchUsers(@RequestParam("search") String keyword, Pageable pageable) {
+    public ResponseEntity<Page<TeamResponseDto>> getSearchTeams(@RequestParam("search") String keyword, Pageable pageable) {
         Page<TeamResponseDto> pages = teamService.searchTeams(keyword, pageable);
         return ResponseEntity.ok(pages);
     }
 
     // 키워드로 인증받을 퀘스트 찾기
-//    @GetMapping("/quest/verification")
-//    public
+    @GetMapping("/quest/verification")
+    public ResponseEntity<Page<QuestVerifyResponseDto>> getSearchQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization, @RequestParam("search") String keyword, Pageable pageable) {
+        Page<QuestVerifyResponseDto> pages = questService.searchRecommendQuestsForVerification(authorization, keyword, pageable);
+        return ResponseEntity.ok(pages);
+    }
 }

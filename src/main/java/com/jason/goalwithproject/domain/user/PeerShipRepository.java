@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,5 +19,11 @@ public interface PeerShipRepository extends JpaRepository<PeerShip, Long> {
             @Param("userId") Long userId,
             @Param("status") PeerStatus status,
             Pageable pageable);
+    @Query("SELECT p FROM PeerShip p WHERE (p.requester.id = :userId OR p.addressee.id = :userId) AND p.status = :status")
+    List<PeerShip> findMyPeers(
+            @Param("userId") Long userId,
+            @Param("status") PeerStatus status
+            );
     Optional<PeerShip> findByAddressee_IdAndRequester_IdAndStatus(Long addresseeId, Long requesterId, PeerStatus status);
+    List<PeerShip> findByAddressee_IdAndStatus(Long addresseeId, PeerStatus status);
 }

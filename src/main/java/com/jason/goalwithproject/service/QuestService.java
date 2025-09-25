@@ -463,7 +463,6 @@ public class QuestService {
     }
 
 
-
     // 수정 필요 함 아직 작성안함.
     public Map<String, String> updateQuest(String authorization, Long questId, QuestAddRequest questAddRequest) {
         Optional<Quest> target = questRepository.findById(questId);
@@ -491,7 +490,34 @@ public class QuestService {
         }
 
         if (target.get().isVerificationRequired()) {
-            if (target.get().getVerificationCount() >= target.get().getRequiredVerification()) {
+            if (target.get().getQuestStatus() == QuestStatus.VERIFY) {
+                if (target.get().getVerificationCount() < target.get().getRequiredVerification()) {
+                    throw new AccessDeniedException("인증 수가 모자랍니다.");
+                }
+                // action point 계산
+                int actionScore = 0;
+                actionScore += 10;
+
+                // exp score 계산 방식
+                int score = 0;
+                Duration duration = Duration.between(target.get().getStartDate(), target.get().getEndDate());
+                long durationDays = duration.toDays();
+                score += (int) (durationDays * 3);
+                score += (questRecordRepository.countByQuest_Id(target.get().getId()) * 5);
+                score += 10;
+
+                if (target.get().isMain()) {
+                    score *= 2;
+                    actionScore += 20;
+                }
+
+                target.get().setQuestStatus(QuestStatus.COMPLETE);
+
+                target.get().getUser().setExp(target.get().getUser().getExp() + score);
+                target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
+
+            }
+            else if (target.get().getVerificationCount() >= target.get().getRequiredVerification()) {
                 target.get().setQuestStatus(QuestStatus.COMPLETE);
 
                 // action point 계산
@@ -519,28 +545,7 @@ public class QuestService {
                 target.get().getUser().setExp(target.get().getUser().getExp() + score);
                 target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
             } else {
-
-                // action point 계산
-                int actionScore = 0;
-                actionScore += 10;
-
-                // exp score 계산 방식
-                int score = 0;
-                Duration duration = Duration.between(target.get().getStartDate(), target.get().getEndDate());
-                long durationDays = duration.toDays();
-                score += (int) (durationDays * 3);
-                score += (questRecordRepository.countByQuest_Id(target.get().getId()) * 5);
-                score += 10;
-
-                if (target.get().isMain()) {
-                    score *= 2;
-                    actionScore += 20;
-                }
-
                 target.get().setQuestStatus(QuestStatus.VERIFY);
-
-                target.get().getUser().setExp(target.get().getUser().getExp() + score);
-                target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
             }
         } else {
             // action point 계산
@@ -570,7 +575,7 @@ public class QuestService {
     }
 
     @Transactional
-    public void verifyQuest(String authorization, Long questId) {
+    public void verifyQuest(String authorization, Long questId, CommentDto commentDto) throws AccessDeniedException {
         Long userId = jwtService.UserIdFromToken(authorization);
 
         Quest targetQuest = questRepository.findById(questId)
@@ -578,6 +583,16 @@ public class QuestService {
 
         User verifyingUser = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
+
+        QuestVerification questVerification = new QuestVerification().builder()
+                .questRecord(null)
+                .createdAt(LocalDateTime.now())
+                .quest(targetQuest)
+                .comment(commentDto.getComment())
+                .user(verifyingUser)
+                .build();
+
+        questVerificationRepository.save(questVerification);
 
         targetQuest.setVerificationCount(targetQuest.getVerificationCount() + 1);
 
@@ -618,6 +633,48 @@ public class QuestService {
         Page<QuestVerifyResponseDto> result = questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
 
         return result;
+    }
+
+    // 키워드로 추천 퀘스트 검색하기
+    public Page<QuestVerifyResponseDto> searchRecommendQuestsForVerification(String authorization, String keyword, Pageable pageable) {
+        Long currentUserId = jwtService.UserIdFromToken(authorization);
+
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        // 키워드에 맞는 인증 퀘스트 후보군을 모두 가져옴
+        List<Quest> candidates = questRepository.findVerifiableQuestsByKeyword(QuestStatus.VERIFY, keyword);
+
+        List<QuestWithScore> scoredQuests = candidates.stream()
+                // 본인이 작성한 퀘스트는 제외
+                .filter(quest -> !quest.getUser().getId().equals(currentUserId))
+                .map(quest -> {
+                    // 이전에 만든 점수 계산 헬퍼 메서드를 재사용합니다.
+                    double score = calculateRecommendationScore(currentUser, quest.getUser());
+                    return new QuestWithScore(quest, score);
+                })
+                .collect(Collectors.toList());
+
+        scoredQuests.sort(Comparator.comparingDouble(QuestWithScore::getScore).reversed());
+
+        // 수동 페이지네이션
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), scoredQuests.size());
+
+        // subList는 end 인덱스가 리스트 크기를 초과하면 에러가 나므로 방어 코드 추가
+        if (start >= scoredQuests.size()) {
+            return Page.empty(pageable);
+        }
+
+        List<Quest> pagedResult = scoredQuests.subList(start, end).stream()
+                .map(QuestWithScore::getQuest)
+                .collect(Collectors.toList());
+
+        Page<Quest> questPage = new PageImpl<>(pagedResult, pageable, scoredQuests.size());
+
+        return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+
+
     }
 
     // 추천 점수 계산 헬퍼 메서드

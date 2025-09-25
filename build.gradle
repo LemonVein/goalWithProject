@@ -34,6 +34,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'io.awspring.cloud:spring-cloud-aws-starter:3.1.1'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'software.amazon.awssdk:s3:2.25.4'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:regions'

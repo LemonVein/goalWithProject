@@ -26,6 +26,6 @@ public class QuestVerifyResponseDto {
     private int verificationCount;
     private int requiredVerification;
     private List<QuestRecordDto> records;
-    private List<QuestVerificationDto> verifications;
+    private List<RecordCommentDto> verifications;
     private UserDto user;
 }

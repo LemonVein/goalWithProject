@@ -18,10 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -187,10 +184,24 @@ public class PeerService {
 
         List<User> fullUsers = userRepository.findAllByUserType(currentUser.getUserType());
 
+        // 현재 사용자의 모든 '친구' 관계를 조회합니다. (ACCEPTED 상태)
+        List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);
+
+        // 조회된 친구 관계에서 상대방의 ID만 추출하여 Set으로 만듭니다.
+        Set<Long> friendIdSet = myPeers.stream()
+                .map(peerShip -> peerShip.getRequester().getId().equals(currentUserId)
+                        ? peerShip.getAddressee().getId()
+                        : peerShip.getRequester().getId())
+                .collect(Collectors.toSet());
+
+
         // 각 유저의 '추천 점수'를 계산하고, 유저와 점수를 함께 저장합니다.
         List<UserWithScore> scoredUsers = fullUsers.stream()
-                // 본인이 작성한 퀘스트는 제외
-                .filter(user -> !user.getId().equals(currentUserId))
+                .filter(user -> {
+                    Long userId = user.getId();
+                    // 본인이 아니고, 친구 목록에도 없어야 true를 반환
+                    return !userId.equals(currentUserId) && !friendIdSet.contains(userId);
+                })
                 .map(user -> {
                     double score = calculateRecommendationScore(currentUser, user);
                     return new UserWithScore(user, score);
@@ -202,6 +213,11 @@ public class PeerService {
 
         // 정렬된 리스트를 수동으로 페이지네이션합니다.
         int start = (int) pageable.getOffset();
+
+        if (start >= scoredUsers.size()) {
+            return Page.empty(pageable);
+        }
+
         int end = Math.min((start + pageable.getPageSize()), scoredUsers.size());
         List<User> pagedResult = scoredUsers.subList(start, end).stream()
                 .map(UserWithScore::getUser)

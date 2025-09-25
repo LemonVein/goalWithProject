@@ -10,6 +10,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -66,6 +67,13 @@ public class PeerController {
     @GetMapping("/recommend")
     public ResponseEntity<Page<RequesterDto>> getRecommendedUsers(@RequestHeader("Authorization") String authorization, Pageable pageable) {
         Page<RequesterDto> result = peerService.getRecommendedUsers(authorization, pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    // 내 동료들 불러오기
+    @GetMapping("/myPeerId")
+    public ResponseEntity<List<Long>> getMyPeerIds(@RequestHeader("Authorization") String authorization) {
+        List<Long> result = peerService.getMyPeerIds(authorization);
         return ResponseEntity.ok(result);
     }
 }

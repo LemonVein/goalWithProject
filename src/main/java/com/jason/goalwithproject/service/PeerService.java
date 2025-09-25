@@ -176,6 +176,27 @@ public class PeerService {
         });
     }
 
+    public List<Long> getMyPeerIds(String authorization) {
+        Long currentUserId = jwtService.UserIdFromToken(authorization);
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);
+
+        return myPeers.stream()
+                .map(peerShip -> {
+                    // '나'가 아닌 '상대방(동료)'이 누구인지 확인하여 그 ID를 반환합니다.
+                    if (peerShip.getRequester().getId().equals(currentUserId)) {
+                        return peerShip.getAddressee().getId();
+                    } else {
+                        return peerShip.getRequester().getId();
+                    }
+                })
+                .collect(Collectors.toList());
+
+    }
+
+    // 유저에 맞는 추천 유저를 추천해주는 메서드
     @Transactional(readOnly = true)
     public Page<RequesterDto> getRecommendedUsers(String authorization, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);

@@ -20,6 +20,7 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
     Page<Quest> findAllByVerificationRequiredTrueAndQuestStatus(QuestStatus questStatus, Pageable pageable);
     List<Quest> findAllByVerificationRequiredTrueAndQuestStatus(QuestStatus questStatus);
     List<Quest> findAllByUser_IdAndTeamIsNull(Long id);
+    Optional<Quest> findByUser_IdAndIsMainTrueAndTeamIsNull(Long id);
     Optional<Quest> findByTeam_IdAndQuestStatus(int teamId, QuestStatus questStatus);
 
     @Query("SELECT q FROM Quest q WHERE " +

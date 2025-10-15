@@ -156,7 +156,7 @@ public class DtoConverterService {
         String badgeImageUrl = userBadgeRepository.findByUser_Id(user.getId())
                 .getBadge().getImageUrl();
 
-        SingleQuestDto mainQuestDto = questRepository.findByUser_IdAndIsMainTrue(user.getId())
+        SingleQuestDto mainQuestDto = questRepository.findByUser_IdAndIsMainTrueAndTeamIsNull(user.getId())
                 .map(SingleQuestDto::from)
                 .orElse(null);
 

@@ -11,9 +11,7 @@ import com.jason.goalwithproject.dto.user.UserWithScore;
 import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -203,7 +201,17 @@ public class PeerService {
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        List<User> fullUsers = userRepository.findAllByUserType(currentUser.getUserType());
+        int level = currentUser.getLevel();
+        int minLevel = Math.max(1, level - 5);
+        int maxLevel = level + 5;
+
+        // DB에서 가져올 후보군을 200명으로 제한 (최신 가입자 순)
+        Pageable candidatePageable = PageRequest.of(0, 200, Sort.by(Sort.Direction.DESC, "id"));
+
+        // 레벨 범위에 맞는 사용자들을 후보군으로 조회합니다. (본인 제외)
+        Page<User> candidatePage = userRepository.findByLevelBetweenAndIdNot(
+                minLevel, maxLevel, currentUserId, candidatePageable);
+        List<User> fullUsers = candidatePage.getContent();
 
         // 현재 사용자의 모든 '친구' 관계를 조회합니다. (ACCEPTED 상태)
         List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);

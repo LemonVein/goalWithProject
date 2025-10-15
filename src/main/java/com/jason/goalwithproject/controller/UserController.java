@@ -38,6 +38,7 @@ public class UserController {
         return ResponseEntity.ok(tokens);
     }
 
+    // 유저 정보 불러오기
     @GetMapping("/{userId}")
     public ResponseEntity<UserInformationDto> getUserInfo(@RequestHeader("Authorization") String authorization, @PathVariable Long userId) {
         UserInformationDto dto = userService.getUserInformation(authorization, userId);

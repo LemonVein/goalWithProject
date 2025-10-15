@@ -95,7 +95,7 @@ public class UserService {
         userCharacter.setEquipped(true);
         userCharacterRepository.save(userCharacter);
 
-        // 유저 기본 뱃지 설정. 1번 캐릭터
+        // 유저 기본 뱃지 설정. 1번 뱃지
         UserBadge userBadge = new UserBadge();
         userBadge.setUser(user);
         userBadge.setBadge(badgeRepository.findById(1).get());

@@ -19,4 +19,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findAllByUserType(UserType userType);
 
     Page<User> findByNickNameContaining(String name, Pageable pageable);
+
+    Page<User> findByLevelBetweenAndIdNot(int minLevel, int maxLevel, Long userId, Pageable pageable);
 }

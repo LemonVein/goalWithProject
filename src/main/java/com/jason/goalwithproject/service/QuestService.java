@@ -41,6 +41,7 @@ public class QuestService {
     private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
     private final DtoConverterService dtoConverterService;
+    private final UserService userService;
 
     public QuestListDto findQuests(String authentication) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authentication);
@@ -139,22 +140,58 @@ public class QuestService {
 
     }
 
-    public Map<ReactionType, Integer> countReactions(Long questId) {
+    public ReactionCountDto countReactions(String authorization, Long questId) {
         Quest targetQuest = questRepository.findById(questId)
                 .orElseThrow( () -> new IllegalArgumentException("해당 퀘스트를 찾을 수 없습니다."));
 
-        List<Reaction> reactions = reactionRepository.findAllByQuest_Id(questId);
-        Map<ReactionType, Integer> reactionMap = new HashMap<>();
-        for (Reaction reaction : reactions) {
-            ReactionType type = ReactionType.valueOf(reaction.getReactionType().toUpperCase());
-            reactionMap.put(type, reactionMap.getOrDefault(type, 0) + 1);
-        }
+        Long userId = jwtService.UserIdFromToken(authorization);
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
+
+        List<Reaction> allReactions = reactionRepository.findAllByQuest_Id(questId);
+        Map<ReactionType, Integer> counts = new EnumMap<>(ReactionType.class);
+        // 모든 ReactionType에 대해 카운트를 0으로 초기화
         for (ReactionType type : ReactionType.values()) {
-            reactionMap.putIfAbsent(type, 0);
+            counts.put(type, 0);
+        }
+        // 조회된 리액션으로 카운트 업데이트
+        allReactions.forEach(reaction -> {
+            try {
+                ReactionType type = ReactionType.valueOf(reaction.getReactionType().toUpperCase());
+                counts.put(type, counts.get(type) + 1);
+            } catch (IllegalArgumentException e) {
+                // 잘못된 reactionType 데이터는 무시
+            }
+        });
+
+        // 3. '내가 남긴' 리액션 정보를 조회합니다.
+        Map<ReactionType, Boolean> myReactionMap = new EnumMap<>(ReactionType.class);
+        // 모든 ReactionType에 대해 false로 초기화
+        for (ReactionType type : ReactionType.values()) {
+            myReactionMap.put(type, false);
         }
 
-        return reactionMap;
+        // 로그인 상태일 경우에만 내 리액션 정보를 조회하여 업데이트
+        if (userId != null) {
+            List<Reaction> myReactions = reactionRepository.findAllByQuest_IdAndUser_Id(questId, userId);
+            myReactions.forEach(reaction -> {
+                try {
+                    ReactionType type = ReactionType.valueOf(reaction.getReactionType().toUpperCase());
+                    myReactionMap.put(type, true); // 내가 남긴 리액션은 true로 변경
+                } catch (IllegalArgumentException e) {
+                    // 잘못된 reactionType 데이터는 무시
+                }
+            });
+        }
+
+        return ReactionCountDto.builder()
+                .support(counts.get(ReactionType.SUPPORT))
+                .amazing(counts.get(ReactionType.AMAZING))
+                .together(counts.get(ReactionType.TOGETHER))
+                .perfect(counts.get(ReactionType.PERFECT))
+                .myReaction(myReactionMap)
+                .build();
     }
 
     @Transactional
@@ -675,6 +712,7 @@ public class QuestService {
 
     }
 
+    // 친구들의 인증 게시물들을 불러옵니다. (최신순)
     @Transactional(readOnly = true)
     public Page<QuestVerifyResponseDto> getPeerQuestsForVerification(String authorization, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
@@ -699,6 +737,47 @@ public class QuestService {
         Page<QuestVerifyResponseDto> dto = questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
 
         return dto;
+    }
+
+    @Transactional
+    public void addReaction(String authorization, Long questId, ReactionRequestDto reactionRequestDto) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+        Quest quest = questRepository.findById(questId)
+                .orElseThrow(() -> new EntityNotFoundException("퀘스트를 찾을 수 없습니다."));
+
+        Reaction newReaction = new Reaction();
+        String upperCaseString = reactionRequestDto.getReactionType().toUpperCase();
+        ReactionType reactionType = ReactionType.valueOf(upperCaseString);
+
+        List<Reaction> existingReactions = reactionRepository.findAllByQuest_IdAndUser_Id(questId, userId);
+
+        boolean alreadyExists = existingReactions.stream()
+                .anyMatch(reaction -> reaction.getReactionType().equalsIgnoreCase(reactionType.name()));
+
+        if (alreadyExists) {
+            throw new IllegalArgumentException("이미 '" + reactionType.name() + "' 리액션을 남겼습니다.");
+        }
+
+        newReaction.setQuest(quest);
+        newReaction.setUser(user);
+        newReaction.setReactionType(reactionType.name());
+
+        reactionRepository.save(newReaction);
+
+    }
+
+    @Transactional
+    public void deleteReaction(String authorization, Long questId, String reactionType) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+        Quest quset = questRepository.findById(questId).orElseThrow(EntityNotFoundException::new);
+
+        Reaction reactionToDelete = reactionRepository.findByQuest_IdAndUser_IdAndReactionTypeIgnoreCase(questId, userId, reactionType)
+                .orElseThrow(() -> new EntityNotFoundException("해당 리액션을 찾을 수 없거나 삭제할 권한이 없습니다."));
+
+        reactionRepository.delete(reactionToDelete);
     }
 
     // 추천 점수 계산 헬퍼 메서드

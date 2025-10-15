@@ -197,7 +197,14 @@ public class UserService {
             throw new IllegalArgumentException("존재하지 않는 유저입니다");
         }
 
+        UserType targetType = userTypeRepository.findByName(userEditInfoDto.getUserType());
+
+        if (targetType == null) {
+            throw new IllegalArgumentException("존재하지 않는 타입입니다");
+        }
+
         user.setNickName(userEditInfoDto.getNickname());
+        user.setUserType(targetType);
     }
 
     public UserInformationDto getUserInformation(String authorization, Long userId) {

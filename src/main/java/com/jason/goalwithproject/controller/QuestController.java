@@ -1,10 +1,7 @@
 package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.domain.quest.ReactionType;
-import com.jason.goalwithproject.dto.quest.CommentDto;
-import com.jason.goalwithproject.dto.quest.QuestAddRequest;
-import com.jason.goalwithproject.dto.quest.QuestListDto;
-import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
+import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,9 +34,9 @@ public class QuestController {
 
     // 리액션 기능. 사실상 프론트에서 사용하지 않아 잠시 동결
     @GetMapping("/{questId}/reactions")
-    public ResponseEntity<Map<ReactionType, Integer>> returnReactionCount(@PathVariable Long questId) {
-        Map<ReactionType, Integer> reactionMap = questService.countReactions(questId);
-        return ResponseEntity.ok(reactionMap);
+    public ResponseEntity<ReactionCountDto> returnReactionCount(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
+        ReactionCountDto reactionCount = questService.countReactions(authorization, questId);
+        return ResponseEntity.ok(reactionCount);
     }
 
     // 수정, 삭제 메서드
@@ -81,6 +78,18 @@ public class QuestController {
     public ResponseEntity<Page<QuestVerifyResponseDto>> getPeerVerifyQuest(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
         Page<QuestVerifyResponseDto> result = questService.getPeerQuestsForVerification(authorization, pageable);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{questId}/reaction")
+    public ResponseEntity<Void> addReaction(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody ReactionRequestDto reactionRequestDto) {
+        questService.addReaction(authorization, questId, reactionRequestDto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{questId}/reaction/{reactionType}")
+    public ResponseEntity<Void> deleteReaction(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @PathVariable String reactionType) {
+        questService.deleteReaction(authorization, questId, reactionType);
+        return ResponseEntity.noContent().build();
     }
 
 

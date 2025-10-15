@@ -52,10 +52,12 @@ public class UserController {
         return ResponseEntity.ok(dto);
     }
 
-//    @PutMapping
-//    public ResponseEntity<Void> editUserInfo(@RequestHeader("Authorization") String authorization, @RequestBody UserEditInfoDto userEditInfoDto) {
-//
-//    }
+    // 닉네임 및 유정 타입 수정
+    @PutMapping("/info")
+    public ResponseEntity<Void> editUserInfo(@RequestHeader("Authorization") String authorization, @RequestBody UserEditInfoDto userEditInfoDto) {
+        userService.editUserInfo(authorization, userEditInfoDto);
+        return ResponseEntity.noContent().build();
+    }
 
     // 유저가 가지고 있는 캐릭터들 조회
     @GetMapping("/characters/{userId}")

@@ -5,13 +5,13 @@ import com.jason.goalwithproject.domain.custom.BadgeRepository;
 import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.custom.CharacterDto;
+import com.jason.goalwithproject.dto.custom.CharacterIdDto;
 import com.jason.goalwithproject.dto.jwt.TokenResponse;
 import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
-import com.jason.goalwithproject.dto.user.UserDto;
-import com.jason.goalwithproject.dto.user.UserLoginDto;
-import com.jason.goalwithproject.dto.user.UserRegisterDto;
+import com.jason.goalwithproject.dto.user.*;
 import io.jsonwebtoken.Claims;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -160,6 +160,54 @@ public class UserService {
 
         return dtos;
 
+    }
+
+    // 유저의 대표 캐릭터를 변경
+    @Transactional
+    public void updateCharacter(String authorization, Long userId, CharacterIdDto characterIdDto) throws AccessDeniedException {
+        Long myId = jwtService.UserIdFromToken(authorization);
+        if (!Objects.equals(myId, userId)) {
+            throw new AccessDeniedException("캐릭터를 변경할 권한이 없습니다.");
+        }
+
+        Long userCharacterIdToEquip = characterIdDto.getId();
+
+        UserCharacter newEquippedCharacter = userCharacterRepository.findById(userCharacterIdToEquip)
+                .orElseThrow(() -> new EntityNotFoundException("해당 캐릭터를 소유하고 있지 않습니다."));
+
+        if (!newEquippedCharacter.getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("자신이 소유한 캐릭터만 장착할 수 있습니다.");
+        }
+
+        userCharacterRepository.findByUser_IdAndIsEquippedTrue(userId).ifPresent(oldEquippedCharacter -> {
+            oldEquippedCharacter.setEquipped(false);
+        });
+
+        newEquippedCharacter.setEquipped(true);
+    }
+
+    // 수정 필요
+    @Transactional
+    public void editUserInfo(String authorization, UserEditInfoDto userEditInfoDto) {
+        Long currentUserId = jwtService.UserIdFromToken(authorization);
+
+        User user = userRepository.findById(currentUserId).orElse(null);
+
+        if (user == null) {
+            throw new IllegalArgumentException("존재하지 않는 유저입니다");
+        }
+
+        user.setNickName(userEditInfoDto.getNickname());
+    }
+
+    public UserInformationDto getUserInformation(String authorization, Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+
+        if (user == null) {
+            throw new IllegalArgumentException("존재하지 않는 유저입니다");
+        }
+
+        return dtoConverterService.convertToUserInformationDto(user);
     }
 
     // 이름으로 유저들을 검색하는 메서드

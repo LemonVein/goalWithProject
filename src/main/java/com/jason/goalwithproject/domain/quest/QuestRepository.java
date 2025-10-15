@@ -29,5 +29,14 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
             @Param("status") QuestStatus status,
             @Param("keyword") String keyword);
 
+    @Query("SELECT q FROM Quest q WHERE " +
+            "q.user.id IN :peerIds AND " +
+            "q.questStatus = :status AND " +
+            "q.verificationRequired = true")
+    Page<Quest> findPeerQuestsForVerification(
+            @Param("peerIds") List<Long> peerIds,
+            @Param("status") QuestStatus status,
+            Pageable pageable);
+
 
 }

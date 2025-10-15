@@ -7,6 +7,7 @@ import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
 import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.dto.user.UserDto;
+import com.jason.goalwithproject.dto.user.UserInformationDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -140,6 +141,36 @@ public class DtoConverterService {
                 .records(questRecordDtos)
                 .verifications(questVerificationDtos)
                 .user(userDto)
+                .build();
+    }
+
+    public UserInformationDto convertToUserInformationDto(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        String characterImageUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(user.getId())
+                .map(uc -> uc.getCharacterImage().getImage())
+                .orElse(null);
+
+        String badgeImageUrl = userBadgeRepository.findByUser_Id(user.getId())
+                .getBadge().getImageUrl();
+
+        SingleQuestDto mainQuestDto = questRepository.findByUser_IdAndIsMainTrue(user.getId())
+                .map(SingleQuestDto::from)
+                .orElse(null);
+
+        return UserInformationDto.builder()
+                .id(user.getId())
+                .nickname(user.getNickName())
+                .email(user.getEmail())
+                .level(user.getLevel())
+                .actionPoints(user.getActionPoint())
+                .exp(user.getExp())
+                .userType(user.getUserType().getName())
+                .character(characterImageUrl)
+                .badge(badgeImageUrl)
+                .mainQuest(mainQuestDto)
                 .build();
     }
 }

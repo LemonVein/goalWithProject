@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface UserCharacterRepository extends JpaRepository<UserCharacter, Long> {
     UserCharacter findByUser_Id(Long id);
 
+    UserCharacter findById(long id);
+
     Optional<UserCharacter> findByUser_IdAndIsEquippedTrue(Long userId);
 
     List<UserCharacter> findAllByUser_Id(Long userId);

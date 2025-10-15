@@ -4,10 +4,7 @@ import com.jason.goalwithproject.config.S3Uploader;
 import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.team.TeamRepository;
-import com.jason.goalwithproject.domain.user.User;
-import com.jason.goalwithproject.domain.user.UserCharacter;
-import com.jason.goalwithproject.domain.user.UserCharacterRepository;
-import com.jason.goalwithproject.domain.user.UserRepository;
+import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.dto.user.UserDto;
 import io.jsonwebtoken.Claims;
@@ -40,6 +37,7 @@ public class QuestService {
     private final UserCharacterRepository userCharacterRepository;
     private final RecordImageRepository recordImageRepository;
     private final ReactionRepository reactionRepository;
+    private final PeerShipRepository peerShipRepository;
     private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
     private final DtoConverterService dtoConverterService;
@@ -675,6 +673,32 @@ public class QuestService {
         return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
 
 
+    }
+
+    @Transactional(readOnly = true)
+    public Page<QuestVerifyResponseDto> getPeerQuestsForVerification(String authorization, Pageable pageable) {
+        Long currentUserId = jwtService.UserIdFromToken(authorization);
+
+        // 1. 내 친구들의 ID 목록을 가져옵니다.
+        List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);
+        List<Long> peerIds = myPeers.stream()
+                .map(peerShip -> peerShip.getRequester().getId().equals(currentUserId)
+                        ? peerShip.getAddressee().getId()
+                        : peerShip.getRequester().getId())
+                .collect(Collectors.toList());
+
+        // 친구가 한 명도 없으면 빈 페이지를 즉시 반환합니다.
+        if (peerIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 2. Repository를 호출하여 친구들의 인증 퀘스트를 'Pageable'에 정의된 순서(날짜순)대로 가져옵니다.
+        Page<Quest> questPage = questRepository.findPeerQuestsForVerification(
+                peerIds, QuestStatus.VERIFY, pageable);
+
+        Page<QuestVerifyResponseDto> dto = questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+
+        return dto;
     }
 
     // 추천 점수 계산 헬퍼 메서드

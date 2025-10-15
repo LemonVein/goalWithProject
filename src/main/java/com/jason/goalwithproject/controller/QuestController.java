@@ -77,5 +77,11 @@ public class QuestController {
 
     }
 
+    @GetMapping("/verification/peers")
+    public ResponseEntity<Page<QuestVerifyResponseDto>> getPeerVerifyQuest(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<QuestVerifyResponseDto> result = questService.getPeerQuestsForVerification(authorization, pageable);
+        return ResponseEntity.ok(result);
+    }
+
 
 }

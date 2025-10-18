@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -101,5 +102,18 @@ public class RecordController {
     public ResponseEntity<Map<String, String>> deleteComment(@RequestHeader("Authorization") String authorization, @PathVariable("commentId") Long commentId) throws AccessDeniedException {
         Map<String, String> result = questService.deleteComment(authorization, commentId);
         return ResponseEntity.ok(result);
+    }
+
+    // 레코드 리액션 추가
+    @PostMapping("/{recordId}/reaction")
+    public ResponseEntity<Void> addReactionRecord(@RequestHeader("Authorization") String authorization, @RequestBody ReactionRequestDto reactionRequestDto, @PathVariable Long recordId) {
+        questService.addReactionRecord(authorization, recordId, reactionRequestDto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{recordId}/reaction/{reactionType}")
+    public ResponseEntity<Void> deleteReactionRecord(@RequestHeader("Authorization") String authorization, @PathVariable Long recordId, @PathVariable String reactionType) {
+        questService.deleteReactionRecord(authorization, recordId, reactionType);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -768,6 +768,7 @@ public class QuestService {
 
     }
 
+    // 리액션 삭제 (퀘스트 전용)
     @Transactional
     public void deleteReaction(String authorization, Long questId, String reactionType) {
         Long userId = jwtService.UserIdFromToken(authorization);
@@ -775,6 +776,47 @@ public class QuestService {
         Quest quset = questRepository.findById(questId).orElseThrow(EntityNotFoundException::new);
 
         Reaction reactionToDelete = reactionRepository.findByQuest_IdAndUser_IdAndReactionTypeIgnoreCase(questId, userId, reactionType)
+                .orElseThrow(() -> new EntityNotFoundException("해당 리액션을 찾을 수 없거나 삭제할 권한이 없습니다."));
+
+        reactionRepository.delete(reactionToDelete);
+    }
+
+    @Transactional
+    public void addReactionRecord(String authorization, Long recordId, ReactionRequestDto reactionRequestDto) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+        QuestRecord questRecord = questRecordRepository.findById(recordId)
+                .orElseThrow(() -> new EntityNotFoundException("퀘스트를 찾을 수 없습니다."));
+
+        Reaction newReaction = new Reaction();
+        String upperCaseString = reactionRequestDto.getReactionType().toUpperCase();
+        ReactionType reactionType = ReactionType.valueOf(upperCaseString);
+
+        List<Reaction> existingReactions = reactionRepository.findAllByQuestRecord_IdAndUser_Id(recordId, userId);
+
+        boolean alreadyExists = existingReactions.stream()
+                .anyMatch(reaction -> reaction.getReactionType().equalsIgnoreCase(reactionType.name()));
+
+        if (alreadyExists) {
+            throw new IllegalArgumentException("이미 '" + reactionType.name() + "' 리액션을 남겼습니다.");
+        }
+
+        newReaction.setQuestRecord(questRecord);
+        newReaction.setUser(user);
+        newReaction.setReactionType(reactionType.name());
+
+        reactionRepository.save(newReaction);
+
+    }
+
+    @Transactional
+    public void deleteReactionRecord(String authorization, Long recordId, String reactionType) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+        QuestRecord questRecord = questRecordRepository.findById(recordId).orElseThrow(EntityNotFoundException::new);
+
+        Reaction reactionToDelete = reactionRepository.findByQuestRecord_IdAndUser_IdAndReactionTypeIgnoreCase(recordId, userId, reactionType)
                 .orElseThrow(() -> new EntityNotFoundException("해당 리액션을 찾을 수 없거나 삭제할 권한이 없습니다."));
 
         reactionRepository.delete(reactionToDelete);

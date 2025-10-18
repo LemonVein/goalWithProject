@@ -12,5 +12,9 @@ public interface ReactionRepository extends JpaRepository<Reaction, Long> {
 
     List<Reaction> findAllByQuest_IdAndUser_Id(Long questId, Long userId);
 
+    List<Reaction> findAllByQuestRecord_IdAndUser_Id(Long recordId, Long userId);
+
     Optional<Reaction> findByQuest_IdAndUser_IdAndReactionTypeIgnoreCase(Long questId, Long userId, String reactionType);
+
+    Optional<Reaction> findByQuestRecord_IdAndUser_IdAndReactionTypeIgnoreCase(Long recordId, Long userId, String reactionType);
 }

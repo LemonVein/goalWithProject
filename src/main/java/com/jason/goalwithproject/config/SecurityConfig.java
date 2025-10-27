@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.config;
 
+import com.jason.goalwithproject.service.CustomOAuth2UserService;
 import com.jason.goalwithproject.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -37,17 +38,20 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CustomOAuth2UserService customOAuth2UserService) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+//                .oauth2Login(oauth2 -> oauth2
+//                        .userInfoEndpoint(userInfo -> userInfo
+//                                .userService(customOAuth2UserService)))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/user/login", "/api/user/register", "/api/user/refresh").permitAll()
+                        .requestMatchers("/login/oauth2/code/*", "/oauth2/authorization/*").permitAll()
+                        .requestMatchers("/api/user/login", "/api/user/google-login", "/api/user/register", "/api/user/refresh").permitAll()
                         .requestMatchers("/api/quest/{questId}/reactions").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
 
         return http.build();
     }

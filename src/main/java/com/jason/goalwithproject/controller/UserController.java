@@ -2,9 +2,7 @@ package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.custom.CharacterIdDto;
-import com.jason.goalwithproject.dto.jwt.RefreshTokenDto;
-import com.jason.goalwithproject.dto.jwt.TokenResponse;
-import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
+import com.jason.goalwithproject.dto.jwt.*;
 import com.jason.goalwithproject.dto.user.*;
 import com.jason.goalwithproject.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +12,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.security.GeneralSecurityException;
 import java.util.Map;
 
 
@@ -80,6 +80,13 @@ public class UserController {
     public ResponseEntity<TokenResponse> refreshRefreshToken(@RequestBody RefreshTokenDto refreshTokenDto) {
         TokenResponse token = userService.reissueToken(refreshTokenDto.getRefreshToken());
         return ResponseEntity.ok(token);
+    }
+
+    // 구글 로그인 시도 (여기서 토큰은 인증 코드)
+    @PostMapping("/google-login")
+    public ResponseEntity<GoogleAuthTokenResponse> tryLoginGoogle(@RequestBody GoogleTokenDto tokenDto) throws GeneralSecurityException, IOException {
+        GoogleAuthTokenResponse response = userService.authenticateGoogle(tokenDto);
+        return ResponseEntity.ok(response);
     }
 
 

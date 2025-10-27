@@ -1,30 +1,36 @@
 package com.jason.goalwithproject.service;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import com.jason.goalwithproject.config.JwtTokenProvider;
+import com.jason.goalwithproject.domain.custom.Badge;
 import com.jason.goalwithproject.domain.custom.BadgeRepository;
+import com.jason.goalwithproject.domain.custom.CharacterImage;
 import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.custom.CharacterIdDto;
-import com.jason.goalwithproject.dto.jwt.TokenResponse;
-import com.jason.goalwithproject.dto.jwt.TokenResponseWithStatus;
+import com.jason.goalwithproject.dto.jwt.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
 import com.jason.goalwithproject.dto.user.*;
 import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +46,15 @@ public class UserService {
     private final DtoConverterService dtoConverterService;
     private final BadgeRepository badgeRepository;
     private final JwtService jwtService;
+
+    @Value("${google.api.client-id.android}")
+    private String googleClientIdAndroid;
+
+    @Value("${google.api.client-id.ios}")
+    private String googleClientIdIos;
+
+    @Value("${google.api.client-id.web}")
+    private String googleClientIdWeb;
 
     @Transactional
     public TokenResponse TryLogin(UserLoginDto userLoginDto) {
@@ -242,5 +257,85 @@ public class UserService {
                     .level(user.getLevel())
                     .build();
         });
+    }
+
+    @Transactional
+    public GoogleAuthTokenResponse authenticateGoogle(GoogleTokenDto googleIdTokenString) throws GeneralSecurityException, IOException {
+        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), JacksonFactory.getDefaultInstance())
+                // ★ 허용할 클라이언트 ID 목록을 리스트로 전달합니다.
+                .setAudience(Arrays.asList(googleClientIdAndroid, googleClientIdIos, googleClientIdWeb))
+                .build();
+
+        // 2. 토큰 검증 및 파싱 (실패 시 null 반환 또는 예외 발생)
+        GoogleIdToken idToken = verifier.verify(googleIdTokenString.getToken());
+        if (idToken == null) {
+            throw new IllegalArgumentException("유효하지 않은 구글 ID 토큰입니다.");
+        }
+
+        GoogleIdToken.Payload payload = idToken.getPayload();
+        String email = payload.getEmail();
+        String name = (String) payload.get("name");
+
+        AtomicReference<Boolean> isNewer = new AtomicReference<>(false);
+
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    // 처음 방문한 사용자 -> 자동 회원가입
+                    User newUser = new User();
+                    newUser.setEmail(email);
+                    newUser.setName(name);
+                    newUser.setNickName(generateUniqueNickname(name)); // 닉네임 자동 생성
+                    newUser.setPassword(""); // 소셜 로그인
+                    UserType defaultUserType = userTypeRepository.findById(1).orElse(null);
+                    newUser.setUserType(defaultUserType);
+                    newUser = userRepository.save(newUser);
+                    setDefaultCharacterAndBadge(newUser); // 기본 캐릭터/뱃지 설정
+                    isNewer.set(true);
+                    return newUser;
+                });
+
+        Map<String, Object> claims = Map.of("userId", user.getId());
+        String accessToken = jwtTokenProvider.generateAccessToken(claims);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
+
+        LocalDateTime expiryTime = LocalDateTime.now().plusSeconds(jwtTokenProvider.getREFRESH_EXPIRATION_TIME() / 1000);
+        userRefreshTokenRepository.findByUser_Id(user.getId())
+                .ifPresentOrElse(urt -> urt.updateToken(refreshToken, expiryTime),
+                        () -> userRefreshTokenRepository.save(new UserRefreshToken(user, refreshToken, expiryTime)));
+
+        return GoogleAuthTokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .isNewer(isNewer.get())
+                .email(email)
+                .name(name)
+                .build();
+
+    }
+
+    private String generateUniqueNickname(String baseName) {
+        String nickname = baseName.replaceAll("\\s+", ""); // 공백 제거
+        if (userRepository.existsByNickName(nickname)) {
+            // 중복 시 플랜은 일단 보류
+            return nickname + System.currentTimeMillis() % 1000;
+        }
+        return nickname;
+    }
+
+    private void setDefaultCharacterAndBadge(User user) {
+        CharacterImage characterImage = characterImageRepository.findById(1);
+        UserCharacter userCharacter = new UserCharacter();
+        userCharacter.setUser(user);
+        userCharacter.setCharacterImage(characterImage);
+        userCharacter.setEquipped(true);
+        userCharacterRepository.save(userCharacter);
+
+        Badge badge = badgeRepository.findById(1).orElse(null);
+
+        UserBadge userBadge = new UserBadge();
+        userBadge.setUser(user);
+        userBadge.setBadge(badge);
+        userBadgeRepository.save(userBadge);
+
     }
 }

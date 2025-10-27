@@ -524,6 +524,12 @@ public class QuestService {
             throw new AccessDeniedException("이 퀘스트를 완료시킬 권한이 없습니다.");
         }
 
+        if (target.get().getTeam() != null) {
+            if (!target.get().getTeam().getLeader().equals(userRepository.findById(userId).get())) {
+                throw new AccessDeniedException("팀 리더만 팀 퀘스트를 완료시킬 수 있습니다.");
+            }
+        }
+
         if (target.get().isVerificationRequired()) {
             if (target.get().getQuestStatus() == QuestStatus.VERIFY) {
                 if (target.get().getVerificationCount() < target.get().getRequiredVerification()) {

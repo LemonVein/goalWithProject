@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.support.MultipartFilter;
 
 @Configuration
@@ -47,12 +48,17 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login/oauth2/code/*", "/oauth2/authorization/*").permitAll()
-                        .requestMatchers("/api/user/login", "/api/user/google-login", "/api/user/register", "/api/user/refresh").permitAll()
+                        .requestMatchers("/api/user/login", "/api/user/kakao-login", "/api/user/google-login", "/api/user/register", "/api/user/refresh").permitAll()
                         .requestMatchers("/api/quest/{questId}/reactions").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }

@@ -21,9 +21,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
@@ -46,6 +51,7 @@ public class UserService {
     private final DtoConverterService dtoConverterService;
     private final BadgeRepository badgeRepository;
     private final JwtService jwtService;
+    private final RestTemplate restTemplate;
 
     @Value("${google.api.client-id.android}")
     private String googleClientIdAndroid;
@@ -311,6 +317,86 @@ public class UserService {
                 .name(name)
                 .build();
 
+    }
+
+    @Transactional
+    public GoogleAuthTokenResponse authenticateKakao(KakaoTokenDto kakaoTokenDto) throws GeneralSecurityException, IOException {
+        Map<String, Object> kakaoUserInfo = getKakaoUserInfo(kakaoTokenDto.getAccessToken());
+
+        Map<String, Object> kakaoAccount = (Map<String, Object>) kakaoUserInfo.get("kakao_account");
+        Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+
+        String email = (String) kakaoAccount.get("email");
+        String name = (String) profile.get("nickname");
+
+        if (email == null) {
+            // 비즈니스 로직에 따라 처리:
+            // 1. 에러를 발생시켜 프론트에서 이메일 동의를 다시 받도록 함 (권장)
+            // 2. 또는, 이메일 없이 Kakao ID(kakaoUserInfo.get("id"))를 기반으로 회원가입
+            throw new IllegalArgumentException("카카오 로그인 시 이메일 제공에 동의해야 합니다.");
+        }
+
+        AtomicReference<Boolean> isNewer = new AtomicReference<>(false);
+
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    // 처음 방문한 사용자 -> 자동 회원가입
+                    User newUser = new User();
+                    newUser.setEmail(email);
+                    newUser.setName(name);
+                    newUser.setNickName(generateUniqueNickname(name)); // 닉네임 자동 생성
+                    newUser.setPassword(""); // 소셜 로그인
+                    UserType defaultUserType = userTypeRepository.findById(1).orElse(null);
+                    newUser.setUserType(defaultUserType);
+                    newUser = userRepository.save(newUser);
+                    setDefaultCharacterAndBadge(newUser); // 기본 캐릭터/뱃지 설정
+                    isNewer.set(true);
+                    return newUser;
+                });
+
+        Map<String, Object> claims = Map.of("userId", user.getId());
+        String accessToken = jwtTokenProvider.generateAccessToken(claims);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
+
+        LocalDateTime expiryTime = LocalDateTime.now().plusSeconds(jwtTokenProvider.getREFRESH_EXPIRATION_TIME() / 1000);
+        userRefreshTokenRepository.findByUser_Id(user.getId())
+                .ifPresentOrElse(urt -> urt.updateToken(refreshToken, expiryTime),
+                        () -> userRefreshTokenRepository.save(new UserRefreshToken(user, refreshToken, expiryTime)));
+
+        return GoogleAuthTokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .isNewer(isNewer.get())
+                .email(email)
+                .name(name)
+                .build();
+
+    }
+
+    private Map<String, Object> getKakaoUserInfo(String accessToken) {
+        String userInfoUrl = "https://kapi.kakao.com/v2/user/me";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + accessToken);
+        headers.add("Content-type", "application/x-www-form-urlencoded;charset=utf-8");
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    userInfoUrl,
+                    HttpMethod.GET,
+                    entity,
+                    Map.class  // 응답은 Map 형태로 받습니다.
+            );
+
+            // 6. 요청 성공 시, 응답 본문(사용자 정보가 담긴 Map)을 반환합니다.
+            return response.getBody();
+
+        } catch (Exception e) {
+            // 7. 만약 토큰이 만료되었거나 유효하지 않으면 요청이 실패하고 예외가 발생합니다.
+            throw new IllegalArgumentException("유효하지 않은 카카오 토큰입니다.", e);
+        }
     }
 
     private String generateUniqueNickname(String baseName) {

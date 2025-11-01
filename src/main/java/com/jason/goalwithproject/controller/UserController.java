@@ -89,6 +89,13 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    // 카카오 로그인 시도
+    @PostMapping("/kakao-login")
+    public ResponseEntity<GoogleAuthTokenResponse> tryLoginKakao(@RequestBody KakaoTokenDto tokenDto) throws GeneralSecurityException, IOException {
+        GoogleAuthTokenResponse response = userService.authenticateKakao(tokenDto);
+        return ResponseEntity.ok(response);
+    }
+
 
 
 }

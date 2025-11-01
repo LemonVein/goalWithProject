@@ -828,6 +828,28 @@ public class QuestService {
         reactionRepository.delete(reactionToDelete);
     }
 
+    // 내가 댓글 달았던 퀘스트 목록 불러오기
+    @Transactional(readOnly = true)
+    public Page<QuestVerifyResponseDto> getMyVerify(@RequestHeader("Authorization") String authorization, Pageable pageable) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+
+        Page<Quest> questPage = questVerificationRepository.findDistinctQuestsCommentedByUser(userId, pageable);
+
+        return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+
+    }
+
+    @Transactional(readOnly = true)
+    public Page<QuestVerifyResponseDto> getMyReaction(@RequestHeader("Authorization") String authorization, Pageable pageable) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+
+        Page<Quest> questPage = reactionRepository.findDistinctQuestsReactedByUser(userId, pageable);
+
+        return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+    }
+
     // 추천 점수 계산 헬퍼 메서드
     private double calculateRecommendationScore(User currentUser, User questOwner) {
         double score = 0;

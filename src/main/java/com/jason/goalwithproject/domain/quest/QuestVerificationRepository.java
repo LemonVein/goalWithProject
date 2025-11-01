@@ -1,6 +1,10 @@
 package com.jason.goalwithproject.domain.quest;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,4 +17,7 @@ public interface QuestVerificationRepository extends JpaRepository<QuestVerifica
 
     void deleteByQuestRecord_Id(Long id);
     void deleteAllByQuestRecord_Id(Long id);
+
+    @Query("SELECT DISTINCT qv.quest FROM QuestVerification qv WHERE qv.user.id = :userId")
+    Page<Quest> findDistinctQuestsCommentedByUser(@Param("userId") Long userId, Pageable pageable);
 }

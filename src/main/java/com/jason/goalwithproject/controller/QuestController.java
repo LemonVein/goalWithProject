@@ -92,5 +92,21 @@ public class QuestController {
         return ResponseEntity.noContent().build();
     }
 
+    // 내가 인증해줬던 (내가 작성한 댓글들이 있는) 퀘스트들 불러오기
+    @GetMapping("/myVerification")
+    public ResponseEntity<Page<QuestVerifyResponseDto>> getMyVerificationQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<QuestVerifyResponseDto> result = questService.getMyVerify(authorization, pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    // 내가 리액션을 남긴적이 있는 퀘스트들 불러오기
+    @GetMapping("/myReaction")
+    public ResponseEntity<Page<QuestVerifyResponseDto>> getMyReactionQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<QuestVerifyResponseDto> result = questService.getMyReaction(authorization, pageable);
+        return ResponseEntity.ok(result);
+
+    }
+
+
 
 }

@@ -30,24 +30,44 @@ public class PeerService {
     private final JwtService jwtService;
 
     // peer 요청 로직
+    @Transactional
     public Map<String, String> requestPeer(String authorization, Long peerId) {
-        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
-        Long userId = Long.valueOf(claims.get("userId").toString());
+        Long userId = jwtService.UserIdFromToken(authorization);
 
-        Optional<User> requester = userRepository.findById(userId);
-        Optional<User> targetUser = userRepository.findById(peerId);
-
-        if (requester.isPresent() && targetUser.isPresent()) {
-            PeerShip peerShip = new PeerShip();
-
-            peerShip.setRequester(requester.get());
-            peerShip.setAddressee(targetUser.get());
-            peerShip.setStatus(PeerStatus.PENDING);
-
-            peerShipRepository.save(peerShip);
-            return Map.of("status", "success");
+        // 자기 자신에게 요청하는지 확인
+        if (userId.equals(peerId)) {
+            throw new IllegalArgumentException("자기 자신에게 친구 요청을 보낼 수 없습니다.");
         }
-        return Map.of("status", "failed");
+
+        // 두 사용자 (requester, targetUser)가 존재하는지 확인
+        User requester = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("요청자를 찾을 수 없습니다."));
+        User targetUser = userRepository.findById(peerId)
+                .orElseThrow(() -> new EntityNotFoundException("대상을 찾을 수 없습니다."));
+
+        // 기존 관계가 있는지 확인
+        List<PeerShip> existingRelationships = peerShipRepository.findAnyRelationship(userId, peerId);
+
+        if (!existingRelationships.isEmpty()) {
+            // 기존 관계의 상태 확인
+            for (PeerShip ship : existingRelationships) {
+                if (ship.getStatus() == PeerStatus.ACCEPTED) {
+                    throw new IllegalArgumentException("이미 친구 관계입니다.");
+                }
+                if (ship.getStatus() == PeerStatus.PENDING) {
+                    throw new IllegalArgumentException("이미 친구 요청을 보냈거나 받은 상태입니다.");
+                }
+            }
+        }
+
+        // 새 요청 생성
+        PeerShip peerShip = new PeerShip();
+        peerShip.setRequester(requester);
+        peerShip.setAddressee(targetUser);
+        peerShip.setStatus(PeerStatus.PENDING); //
+
+        peerShipRepository.save(peerShip);
+        return Map.of("status", "success");
     }
 
     // 동료 불러오기 메서드

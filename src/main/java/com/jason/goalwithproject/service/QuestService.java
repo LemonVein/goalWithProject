@@ -41,6 +41,7 @@ public class QuestService {
     private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
     private final DtoConverterService dtoConverterService;
+    private final BookmarkRepository bookmarkRepository;
     private final UserService userService;
 
     public QuestListDto findQuests(String authentication) {
@@ -848,6 +849,38 @@ public class QuestService {
         Page<Quest> questPage = reactionRepository.findDistinctQuestsReactedByUser(userId, pageable);
 
         return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+    }
+
+    // 북마크 추가
+    @Transactional
+    public void addBookmark(String authorization, Long questId) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+
+        Quest quest = questRepository.findById(questId).orElseThrow(EntityNotFoundException::new);
+
+        if (bookmarkRepository.findByQuestAndUser(quest, user).isPresent()) {
+            throw new IllegalArgumentException("이미 북마크한 퀘스트입니다");
+        }
+
+        Bookmark bookmark = Bookmark.builder()
+                .quest(quest)
+                .user(user)
+                .date(LocalDateTime.now())
+                .build();
+
+        bookmarkRepository.save(bookmark);
+
+    }
+
+    // 북마크 한 퀘스트들 불러오기
+    public Page<QuestVerifyResponseDto> getMyBookmarks(String authorization, Pageable pageable) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+
+        Page<Quest> bookmarks = bookmarkRepository.findDistinctQuestsBookmarkedByUser(userId, pageable);
+
+        return bookmarks.map(dtoConverterService::convertToQuestVerifyResponseDto);
     }
 
     // 추천 점수 계산 헬퍼 메서드

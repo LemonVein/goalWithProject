@@ -2,15 +2,17 @@ package com.jason.goalwithproject.domain.quest;
 
 import com.jason.goalwithproject.domain.user.User;
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @Builder
+@Entity
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "bookmark")
 public class Bookmark {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

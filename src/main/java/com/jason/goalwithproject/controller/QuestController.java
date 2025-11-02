@@ -104,7 +104,19 @@ public class QuestController {
     public ResponseEntity<Page<QuestVerifyResponseDto>> getMyReactionQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
         Page<QuestVerifyResponseDto> result = questService.getMyReaction(authorization, pageable);
         return ResponseEntity.ok(result);
+    }
 
+    // 북마크 추가
+    @PostMapping("/{questId}/bookmark")
+    public ResponseEntity<Void> addBookmark(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
+        questService.addBookmark(authorization, questId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/bookmarked")
+    public ResponseEntity<Page<QuestVerifyResponseDto>> getMyBookmarkedQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<QuestVerifyResponseDto> bookmarks = questService.getMyBookmarks(authorization, pageable);
+        return ResponseEntity.ok(bookmarks);
     }
 
 

@@ -10,6 +10,7 @@ import com.jason.goalwithproject.domain.custom.BadgeRepository;
 import com.jason.goalwithproject.domain.custom.CharacterImage;
 import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.user.*;
+import com.jason.goalwithproject.dto.custom.BadgeDto;
 import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.custom.CharacterIdDto;
 import com.jason.goalwithproject.dto.jwt.*;
@@ -36,6 +37,7 @@ import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -164,6 +166,17 @@ public class UserService {
 
         return new TokenResponse(newAccessToken, newRefreshToken);
 
+    }
+
+    @Transactional
+    public List<BadgeDto> getBadges(String authorization) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+
+        List<UserBadge> userBadges = userBadgeRepository.findAllByUser_Id(userId);
+
+        List<BadgeDto> dtos = userBadges.stream().map(BadgeDto::new).toList();
+
+        return dtos;
     }
 
     // 유저가 가진 캐릭터들을 리턴하는 메서드
@@ -394,11 +407,32 @@ public class UserService {
             return response.getBody();
 
         } catch (Exception e) {
-            // 7. 만약 토큰이 만료되었거나 유효하지 않으면 요청이 실패하고 예외가 발생합니다.
+            // 만약 토큰이 만료되었거나 유효하지 않으면 요청이 실패하고 예외가 발생합니다.
             throw new IllegalArgumentException("유효하지 않은 카카오 토큰입니다.", e);
         }
     }
 
+    @Transactional
+    public void addExpAndProcessLevelUp(User user, int expToAdd) {
+        user.setExp(user.getExp() + expToAdd);
+
+        int requiredExp = getRequiredExpForLevel(user.getLevel());
+
+        // 여러 번 레벨업할 수도 있으므로
+        while (user.getExp() >= requiredExp) {
+            user.setLevel(user.getLevel() + 1);
+
+            user.setExp(user.getExp() - requiredExp);
+
+            // 레벨업 보상 보류
+            // user.setActionPoint(user.getActionPoint() + 10);
+
+            // 다음 레벨의 필요 경험치를 다시 계산
+            requiredExp = getRequiredExpForLevel(user.getLevel());
+        }
+    }
+
+    // 카카오나 구글 계정 이용시 닉네임 자동 생성 시 중복 방지용 메서드
     private String generateUniqueNickname(String baseName) {
         String nickname = baseName.replaceAll("\\s+", ""); // 공백 제거
         if (userRepository.existsByNickName(nickname)) {
@@ -408,6 +442,7 @@ public class UserService {
         return nickname;
     }
 
+    // 디폴트 캐릭터와 뱃지를 설정하는 메서드
     private void setDefaultCharacterAndBadge(User user) {
         CharacterImage characterImage = characterImageRepository.findById(1);
         UserCharacter userCharacter = new UserCharacter();
@@ -423,5 +458,10 @@ public class UserService {
         userBadge.setBadge(badge);
         userBadgeRepository.save(userBadge);
 
+    }
+
+    // 다음 레벨까지 필요한 경험치량 계산 메서드
+    private int getRequiredExpForLevel(int currentLevel) {
+        return (int) (200 * (currentLevel * 1.1));
     }
 }

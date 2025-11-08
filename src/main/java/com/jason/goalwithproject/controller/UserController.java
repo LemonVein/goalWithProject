@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.custom.BadgeDto;
 import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.custom.CharacterIdDto;
 import com.jason.goalwithproject.dto.jwt.*;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.security.GeneralSecurityException;
+import java.util.List;
 import java.util.Map;
 
 
@@ -64,6 +66,13 @@ public class UserController {
     public ResponseEntity<Page<CharacterDto>> GetCharacters(@RequestHeader("Authorization") String authorization, @PathVariable("userId") Long userId,
                                                             @PageableDefault(size = 5) Pageable pageable) throws AccessDeniedException {
         Page<CharacterDto> dtos = userService.getCharacters(authorization, userId, pageable);
+        return ResponseEntity.ok(dtos);
+    }
+
+    // 유저가 가지고 있는 뱃지들 조회
+    @GetMapping("/badges")
+    public ResponseEntity<List<BadgeDto>> GetBadges(@RequestHeader("Authorization") String authorization) {
+        List<BadgeDto> dtos = userService.getBadges(authorization);
         return ResponseEntity.ok(dtos);
     }
 

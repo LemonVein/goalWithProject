@@ -23,4 +23,7 @@ public class UserBadge {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "badge_id", referencedColumnName = "id")
     private Badge badge;
+
+    @Column(name = "is_equipped")
+    private boolean equipped;
 }

@@ -555,7 +555,9 @@ public class QuestService {
 
                 target.get().setQuestStatus(QuestStatus.COMPLETE);
 
-                target.get().getUser().setExp(target.get().getUser().getExp() + score);
+                // 새로운 레벨업 메서드로 대체
+                // target.get().getUser().setExp(target.get().getUser().getExp() + score);
+                userService.addExpAndProcessLevelUp(target.get().getUser(), score);
                 target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
 
             }
@@ -584,7 +586,9 @@ public class QuestService {
                 score += (target.get().getRequiredVerification() * 5) + (target.get().getVerificationCount() - target.get().getRequiredVerification());
                 actionScore += (target.get().getRequiredVerification() * 2) + (target.get().getVerificationCount() - target.get().getRequiredVerification());
 
-                target.get().getUser().setExp(target.get().getUser().getExp() + score);
+                // 새로운 레벨업 방법으로 대체
+                // target.get().getUser().setExp(target.get().getUser().getExp() + score);
+                userService.addExpAndProcessLevelUp(target.get().getUser(), score);
                 target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
             } else {
                 target.get().setQuestStatus(QuestStatus.VERIFY);
@@ -608,7 +612,9 @@ public class QuestService {
             }
 
             target.get().setQuestStatus(QuestStatus.COMPLETE);
-            target.get().getUser().setExp(target.get().getUser().getExp() + score);
+            // 새로운 레벨업 방법으로 대체
+            // target.get().getUser().setExp(target.get().getUser().getExp() + score);
+            userService.addExpAndProcessLevelUp(target.get().getUser(), score);
             target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
         }
 
@@ -638,7 +644,9 @@ public class QuestService {
 
         targetQuest.setVerificationCount(targetQuest.getVerificationCount() + 1);
 
-        verifyingUser.setExp(verifyingUser.getExp() + 10);
+        // 새로운 레벨업 방식, 경험치 지급 방법으로 대체
+        // verifyingUser.setExp(verifyingUser.getExp() + 10);
+        userService.addExpAndProcessLevelUp(verifyingUser, 10);
     }
 
     @Transactional(readOnly = true)

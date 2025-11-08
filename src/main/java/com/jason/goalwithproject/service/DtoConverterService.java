@@ -30,7 +30,7 @@ public class DtoConverterService {
     public UserDto convertToDto(User user) {
         if (user == null) return null;
         Optional<UserCharacter> userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(user.getId());
-        UserBadge userBadge = userBadgeRepository.findByUser_Id(user.getId());
+        UserBadge userBadge = userBadgeRepository.findByUser_IdAndEquippedTrue(user.getId());
 
 
         return UserDto.builder()
@@ -153,7 +153,7 @@ public class DtoConverterService {
                 .map(uc -> uc.getCharacterImage().getImage())
                 .orElse(null);
 
-        String badgeImageUrl = userBadgeRepository.findByUser_Id(user.getId())
+        String badgeImageUrl = userBadgeRepository.findByUser_IdAndEquippedTrue(user.getId())
                 .getBadge().getImageUrl();
 
         SingleQuestDto mainQuestDto = questRepository.findByUser_IdAndIsMainTrueAndTeamIsNull(user.getId())

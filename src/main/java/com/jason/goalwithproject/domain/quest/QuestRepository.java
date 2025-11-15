@@ -39,5 +39,8 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
             @Param("status") QuestStatus status,
             Pageable pageable);
 
+    // 사용자의 퀘스트 수 반환 (업적용)
+    long countByUser_Id(Long userId);
+
 
 }

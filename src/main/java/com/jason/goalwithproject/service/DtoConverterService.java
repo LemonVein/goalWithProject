@@ -1,6 +1,5 @@
 package com.jason.goalwithproject.service;
 
-import com.jason.goalwithproject.domain.custom.CharacterImage;
 import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.user.*;
@@ -25,6 +24,7 @@ public class DtoConverterService {
     private final QuestVerificationRepository questVerificationRepository;
     private final QuestRecordRepository questRecordRepository;
     private final RecordImageRepository recordImageRepository;
+    private final BookmarkRepository bookmarkRepository;
 
     // User 객체를 UserDto 로 변환해주는 메서드
     public UserDto convertToDto(User user) {
@@ -41,7 +41,7 @@ public class DtoConverterService {
                 .actionPoints(user.getActionPoint())
                 .userType(user.getUserType().getName())
                 .character(userCharacter.get().getCharacterImage().getImage())
-                .badge(userBadge.getBadge().getImageUrl())
+                .badge(userBadge.getBadge().getName())
                 .exp(user.getExp())
                 .build();
     }
@@ -100,7 +100,7 @@ public class DtoConverterService {
     }
 
     // quest를 인증받을 퀘스트로 변환하는 메서드
-    public QuestVerifyResponseDto convertToQuestVerifyResponseDto(Quest quest) {
+    public UserQuestVerifyResponseDto convertToQuestVerifyResponseDto(Quest quest) {
         if (quest == null) {
             return null;
         }
@@ -118,16 +118,16 @@ public class DtoConverterService {
             return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
         }).toList();
 
-        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_Id(quest.getId());
+//        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_Id(quest.getId());
+//
+//        List<RecordCommentDto> questVerificationDtos = questVerifications.stream()
+//                .map(questVerification -> {
+//                    Optional<UserCharacter> uc = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId());
+//                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage());
+//                })
+//                .toList();
 
-        List<RecordCommentDto> questVerificationDtos = questVerifications.stream()
-                .map(questVerification -> {
-                    Optional<UserCharacter> uc = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId());
-                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage());
-                })
-                .toList();
-
-        return QuestVerifyResponseDto.builder()
+        return UserQuestVerifyResponseDto.builder()
                 .id(quest.getId())
                 .title(quest.getTitle())
                 .description(quest.getDescription())
@@ -139,8 +139,54 @@ public class DtoConverterService {
                 .verificationCount(quest.getVerificationCount())
                 .requiredVerification(quest.getRequiredVerification())
                 .records(questRecordDtos)
-                .verifications(questVerificationDtos)
                 .user(userDto)
+                .build();
+    }
+
+    public UserQuestVerifyResponseDto convertToQuestVerifyResponseDtoPersonal(Quest quest, User targetUser) {
+        if (quest == null) {
+            return null;
+        }
+
+        User user = quest.getUser();
+        UserDto userDto = convertToDto(user);
+
+        List<QuestRecord> questRecords = questRecordRepository.findAllByQuest_Id(quest.getId());
+
+        List<QuestRecordDto> questRecordDtos = questRecords.stream().map(record -> {
+            List<RecordImage> images = recordImageRepository.findByQuestRecord_Id(record.getId());
+            List<String> imageUrls = images.stream()
+                    .map(RecordImage::getUrl)
+                    .toList();
+            return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
+        }).toList();
+
+//        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_Id(quest.getId());
+//
+//        List<RecordCommentDto> questVerificationDtos = questVerifications.stream()
+//                .map(questVerification -> {
+//                    Optional<UserCharacter> uc = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId());
+//                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage());
+//                })
+//                .toList();
+        boolean bookmarked = bookmarkRepository.existsByUser_IdAndQuest_Id(targetUser.getId(), quest.getId());
+        boolean verified = questVerificationRepository.existsByUser_IdAndQuest_Id(targetUser.getId(), quest.getId());
+
+        return UserQuestVerifyResponseDto.builder()
+                .id(quest.getId())
+                .title(quest.getTitle())
+                .description(quest.getDescription())
+                .isMain(quest.isMain())
+                .startDate(quest.getStartDate())
+                .endDate(quest.getEndDate())
+                .procedure(quest.getQuestStatus())
+                .verificationRequired(quest.isVerificationRequired())
+                .verificationCount(quest.getVerificationCount())
+                .requiredVerification(quest.getRequiredVerification())
+                .records(questRecordDtos)
+                .user(userDto)
+                .bookmarked(bookmarked)
+                .verified(verified)
                 .build();
     }
 
@@ -154,7 +200,7 @@ public class DtoConverterService {
                 .orElse(null);
 
         String badgeImageUrl = userBadgeRepository.findByUser_IdAndEquippedTrue(user.getId())
-                .getBadge().getImageUrl();
+                .getBadge().getName();
 
         SingleQuestDto mainQuestDto = questRepository.findByUser_IdAndIsMainTrueAndTeamIsNull(user.getId())
                 .map(SingleQuestDto::from)

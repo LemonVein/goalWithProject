@@ -16,7 +16,7 @@ public class RecordCommentDto {
     @JsonProperty("user_id")
     private Long userId;
     private String username;
-    private String text;
+    private String comment;
     private String character;
     private LocalDateTime createdAt;
 
@@ -25,7 +25,7 @@ public class RecordCommentDto {
                 .id(verification.getId())
                 .userId(verification.getUser().getId())
                 .username(verification.getUser().getNickName())
-                .text(verification.getComment())
+                .comment(verification.getComment())
                 .character(url)
                 .createdAt(verification.getCreatedAt())
                 .build();

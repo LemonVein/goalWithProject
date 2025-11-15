@@ -8,15 +8,21 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface QuestVerificationRepository extends JpaRepository<QuestVerification, Long> {
     List<QuestVerification> findAllByQuest_IdAndUser_Id(Long questId, Long userId);
     List<QuestVerification> findAllByQuestRecord_Id(Long questRecordId);
     List<QuestVerification> findAllByQuest_Id(Long questId);
+    Optional<QuestVerification> findById(Long id);
+
+    int countByQuest_Id(Long questId);
 
     void deleteByQuestRecord_Id(Long id);
     void deleteAllByQuestRecord_Id(Long id);
+
+    boolean existsByUser_IdAndQuest_Id(Long userId, Long questId);
 
     @Query("SELECT DISTINCT qv.quest FROM QuestVerification qv WHERE qv.user.id = :userId")
     Page<Quest> findDistinctQuestsCommentedByUser(@Param("userId") Long userId, Pageable pageable);

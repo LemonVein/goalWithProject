@@ -1,7 +1,7 @@
 package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.dto.peer.RequesterDto;
-import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
+import com.jason.goalwithproject.dto.quest.UserQuestVerifyResponseDto;
 import com.jason.goalwithproject.dto.team.TeamResponseDto;
 import com.jason.goalwithproject.service.QuestService;
 import com.jason.goalwithproject.service.TeamService;
@@ -36,8 +36,8 @@ public class SearchController {
 
     // 키워드로 인증받을 퀘스트 찾기
     @GetMapping("/quest/verification")
-    public ResponseEntity<Page<QuestVerifyResponseDto>> getSearchQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization, @RequestParam("search") String keyword, Pageable pageable) {
-        Page<QuestVerifyResponseDto> pages = questService.searchRecommendQuestsForVerification(authorization, keyword, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getSearchQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization, @RequestParam("search") String keyword, Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> pages = questService.searchRecommendQuestsForVerification(authorization, keyword, pageable);
         return ResponseEntity.ok(pages);
     }
 }

@@ -1,12 +1,8 @@
 package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.config.JwtTokenProvider;
-import com.jason.goalwithproject.domain.quest.Quest;
-import com.jason.goalwithproject.domain.quest.QuestStatus;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
-import com.jason.goalwithproject.dto.quest.QuestVerifyResponseDto;
-import com.jason.goalwithproject.dto.quest.QuestWithScore;
 import com.jason.goalwithproject.dto.user.UserWithScore;
 import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
@@ -277,6 +273,16 @@ public class PeerService {
         Page<RequesterDto> result = peerPage.map(dtoConverterService::convertToRequesterDto);
 
         return result;
+    }
+
+    @Transactional
+    public void cancelPeerRequest(String authorization, Long addresseeId) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+
+        PeerShip peerShipToCancel = peerShipRepository.findByRequester_IdAndAddressee_IdAndStatus(userId, addresseeId, PeerStatus.PENDING)
+                .orElseThrow(() -> new EntityNotFoundException("취소할 수 있는 친구 요청이 없습니다"));
+
+        peerShipRepository.delete(peerShipToCancel);
     }
 
     // 추천 점수 계산 헬퍼 메서드

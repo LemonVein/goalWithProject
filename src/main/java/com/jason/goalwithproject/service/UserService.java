@@ -456,6 +456,7 @@ public class UserService {
         UserBadge userBadge = new UserBadge();
         userBadge.setUser(user);
         userBadge.setBadge(badge);
+        userBadge.setEquipped(true);
         userBadgeRepository.save(userBadge);
 
     }

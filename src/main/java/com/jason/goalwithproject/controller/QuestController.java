@@ -1,6 +1,5 @@
 package com.jason.goalwithproject.controller;
 
-import com.jason.goalwithproject.domain.quest.ReactionType;
 import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,6 @@ public class QuestController {
         return ResponseEntity.ok(questService.updateQuest(authorization, questId, questAddRequest)); // 수정 필요 보류
     }
 
-    //
     @DeleteMapping("/{questId}")
     public ResponseEntity<Map<String, String>> deleteQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
         Map<String, String> resultMap = questService.deleteQuestWithQuestId(questId);
@@ -68,15 +66,15 @@ public class QuestController {
 
     // 인증받을 퀘스트 목록 불러오기
     @GetMapping("/verification")
-    public ResponseEntity<Page<QuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<QuestVerifyResponseDto> result = questService.getRecommendedQuestsForVerification(authorization, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> result = questService.getRecommendedQuestsForVerification(authorization, pageable);
         return ResponseEntity.ok(result);
 
     }
 
     @GetMapping("/verification/peers")
-    public ResponseEntity<Page<QuestVerifyResponseDto>> getPeerVerifyQuest(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<QuestVerifyResponseDto> result = questService.getPeerQuestsForVerification(authorization, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getPeerVerifyQuest(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> result = questService.getPeerQuestsForVerification(authorization, pageable);
         return ResponseEntity.ok(result);
     }
 
@@ -92,17 +90,30 @@ public class QuestController {
         return ResponseEntity.noContent().build();
     }
 
+    // 인증 댓글 수정 및 삭제 메서드들
+    @PutMapping("/verifications/{verificationId}")
+    public ResponseEntity<Void> editComment(@RequestHeader("Authorization") String authorization, @PathVariable Long verificationId, @RequestBody CommentDto commentDto) throws AccessDeniedException {
+        questService.editVerification(authorization, verificationId, commentDto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/verifications/{verificationId}")
+    public ResponseEntity<Void> deleteComment(@RequestHeader("Authorization") String authorization, @PathVariable Long verificationId) throws AccessDeniedException {
+        questService.deleteComment(authorization, verificationId);
+        return ResponseEntity.noContent().build();
+    }
+
     // 내가 인증해줬던 (내가 작성한 댓글들이 있는) 퀘스트들 불러오기
     @GetMapping("/myVerification")
-    public ResponseEntity<Page<QuestVerifyResponseDto>> getMyVerificationQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<QuestVerifyResponseDto> result = questService.getMyVerify(authorization, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getMyVerificationQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> result = questService.getMyVerify(authorization, pageable);
         return ResponseEntity.ok(result);
     }
 
     // 내가 리액션을 남긴적이 있는 퀘스트들 불러오기
     @GetMapping("/myReaction")
-    public ResponseEntity<Page<QuestVerifyResponseDto>> getMyReactionQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<QuestVerifyResponseDto> result = questService.getMyReaction(authorization, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getMyReactionQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> result = questService.getMyReaction(authorization, pageable);
         return ResponseEntity.ok(result);
     }
 
@@ -113,10 +124,26 @@ public class QuestController {
         return ResponseEntity.noContent().build();
     }
 
+    // 북마크된 나의 퀘스트들을 보내준다
     @GetMapping("/bookmarked")
-    public ResponseEntity<Page<QuestVerifyResponseDto>> getMyBookmarkedQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<QuestVerifyResponseDto> bookmarks = questService.getMyBookmarks(authorization, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getMyBookmarkedQuests(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> bookmarks = questService.getMyBookmarks(authorization, pageable);
         return ResponseEntity.ok(bookmarks);
+    }
+
+    // 퀘스트 북마크 취소
+    @DeleteMapping("/{questId}/bookmark")
+    public ResponseEntity<Void> deleteBookmark(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
+        questService.cancelBookmark(authorization, questId);
+        return ResponseEntity.noContent().build();
+
+    }
+
+    // 단일 퀘스트의 요약 정보를 보내준다
+    @GetMapping("verification/{questId}")
+    public ResponseEntity<QuestSummationDto> getQuestSummation(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
+        QuestSummationDto result = questService.getQuestSummation(authorization, questId);
+        return ResponseEntity.ok(result);
     }
 
 

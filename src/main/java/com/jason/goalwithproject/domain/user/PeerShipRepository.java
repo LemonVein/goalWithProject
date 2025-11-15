@@ -29,4 +29,7 @@ public interface PeerShipRepository extends JpaRepository<PeerShip, Long> {
 
     @Query("SELECT p FROM PeerShip p WHERE (p.requester.id = :user1Id AND p.addressee.id = :user2Id) OR (p.requester.id = :user2Id AND p.addressee.id = :user1Id)")
     List<PeerShip> findAnyRelationship(@Param("user1Id") Long user1Id, @Param("user2Id") Long user2Id);
+
+    // 신청자 아이디, 받은 사람 아이디, 그리고 상태
+    Optional<PeerShip> findByRequester_IdAndAddressee_IdAndStatus(Long requesterId, Long addresseeId, PeerStatus status);
 }

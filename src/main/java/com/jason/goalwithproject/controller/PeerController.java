@@ -33,6 +33,13 @@ public class PeerController {
         return ResponseEntity.ok(result);
     }
 
+    // 동료 요청 취소
+    @DeleteMapping("/requesting/{userId}")
+    public ResponseEntity<Void> cancelRequesting(@RequestHeader("Authorization") String authorization, @PathVariable Long userId) {
+        peerService.cancelPeerRequest(authorization, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     // 받은 동료 요청들 불러오기
     @GetMapping("/requested")
     public ResponseEntity<Page<RequesterDto>> getRequesters(@RequestHeader("Authorization") String authorization,

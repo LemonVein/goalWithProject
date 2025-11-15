@@ -1,7 +1,6 @@
 package com.jason.goalwithproject.dto.quest;
 
 import com.jason.goalwithproject.domain.quest.QuestStatus;
-import com.jason.goalwithproject.dto.user.QuestUserDto;
 import com.jason.goalwithproject.dto.user.UserDto;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,7 +13,7 @@ import java.util.List;
 @Getter
 @Setter
 @Builder
-public class QuestVerifyResponseDto {
+public class UserQuestVerifyResponseDto {
     private Long id;
     private String title;
     private String description;
@@ -26,6 +25,7 @@ public class QuestVerifyResponseDto {
     private int verificationCount;
     private int requiredVerification;
     private List<QuestRecordDto> records;
-    private List<RecordCommentDto> verifications;
     private UserDto user;
+    private boolean verified;
+    private boolean bookmarked;
 }

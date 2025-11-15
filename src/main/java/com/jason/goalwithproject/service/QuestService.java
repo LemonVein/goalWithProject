@@ -1,6 +1,8 @@
 package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.config.S3Uploader;
+import com.jason.goalwithproject.domain.custom.Badge;
+import com.jason.goalwithproject.domain.custom.BadgeRepository;
 import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.team.TeamRepository;
@@ -43,6 +45,8 @@ public class QuestService {
     private final DtoConverterService dtoConverterService;
     private final BookmarkRepository bookmarkRepository;
     private final UserService userService;
+    private final UserBadgeRepository userBadgeRepository;
+    private final BadgeRepository badgeRepository;
 
     public QuestListDto findQuests(String authentication) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authentication);
@@ -133,6 +137,8 @@ public class QuestService {
 
         try {
             questRepository.save(newQuest);
+
+            checkFirstQuestAchievement(user); // 1번 도전과제 추가
         } catch (Exception e) {
             return Map.of("status", "failure");
         }
@@ -650,7 +656,7 @@ public class QuestService {
     }
 
     @Transactional(readOnly = true)
-    public Page<QuestVerifyResponseDto> getRecommendedQuestsForVerification(String authorization, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> getRecommendedQuestsForVerification(String authorization, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
@@ -680,13 +686,46 @@ public class QuestService {
 
         Page<Quest> questPage = new PageImpl<>(pagedResult, pageable, scoredQuests.size());
 
-        Page<QuestVerifyResponseDto> result = questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+        Page<UserQuestVerifyResponseDto> result = questPage.map(quest -> dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, currentUser));
 
         return result;
     }
 
+    @Transactional
+    public void editVerification(String authorization, Long verificationId, CommentDto commentDto) throws AccessDeniedException {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        Optional<QuestVerification> questVerification = questVerificationRepository.findById(verificationId);
+
+        if (questVerification.isEmpty()) {
+            throw new IllegalArgumentException("해당 댓글이 존재하지 않습니다.");
+        }
+
+        if (!Objects.equals(questVerification.get().getUser().getId(), userId)) {
+            throw new AccessDeniedException("댓글을 수정할 권한이 없습니다.");
+        }
+
+        questVerification.get().setComment(commentDto.getComment());
+        questVerificationRepository.save(questVerification.get());
+    }
+
+    @Transactional
+    public void deleteVerification(String authorization, Long verificationId) throws AccessDeniedException {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        Optional<QuestVerification> questVerification = questVerificationRepository.findById(verificationId);
+
+        if (questVerification.isEmpty()) {
+            throw new IllegalArgumentException("해당 댓글이 존재하지 않습니다.");
+        }
+
+        if (!Objects.equals(questVerification.get().getUser().getId(), userId)) {
+            throw new AccessDeniedException("댓글을 삭제할 권한이 없습니다.");
+        }
+
+        questVerificationRepository.deleteById(verificationId);
+    }
+
     // 키워드로 추천 퀘스트 검색하기
-    public Page<QuestVerifyResponseDto> searchRecommendQuestsForVerification(String authorization, String keyword, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> searchRecommendQuestsForVerification(String authorization, String keyword, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
 
         User currentUser = userRepository.findById(currentUserId)
@@ -722,15 +761,18 @@ public class QuestService {
 
         Page<Quest> questPage = new PageImpl<>(pagedResult, pageable, scoredQuests.size());
 
-        return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+        return questPage.map(quest ->
+                dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, currentUser)
+        );
 
 
     }
 
     // 친구들의 인증 게시물들을 불러옵니다. (최신순)
     @Transactional(readOnly = true)
-    public Page<QuestVerifyResponseDto> getPeerQuestsForVerification(String authorization, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> getPeerQuestsForVerification(String authorization, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
+        Optional<User> user = userRepository.findById(currentUserId);
 
         // 1. 내 친구들의 ID 목록을 가져옵니다.
         List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);
@@ -749,7 +791,8 @@ public class QuestService {
         Page<Quest> questPage = questRepository.findPeerQuestsForVerification(
                 peerIds, QuestStatus.VERIFY, pageable);
 
-        Page<QuestVerifyResponseDto> dto = questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+        Page<UserQuestVerifyResponseDto> dto = questPage.map(quest ->
+                dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, user.get()));
 
         return dto;
     }
@@ -839,24 +882,27 @@ public class QuestService {
 
     // 내가 댓글 달았던 퀘스트 목록 불러오기
     @Transactional(readOnly = true)
-    public Page<QuestVerifyResponseDto> getMyVerify(@RequestHeader("Authorization") String authorization, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> getMyVerify(@RequestHeader("Authorization") String authorization, Pageable pageable) {
         Long userId = jwtService.UserIdFromToken(authorization);
         User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
 
         Page<Quest> questPage = questVerificationRepository.findDistinctQuestsCommentedByUser(userId, pageable);
 
-        return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+        return questPage.map(quest ->
+                dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, user));
 
     }
 
+    // 내가 리액션한 퀘스트들 불러오기
     @Transactional(readOnly = true)
-    public Page<QuestVerifyResponseDto> getMyReaction(@RequestHeader("Authorization") String authorization, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> getMyReaction(@RequestHeader("Authorization") String authorization, Pageable pageable) {
         Long userId = jwtService.UserIdFromToken(authorization);
         User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
 
         Page<Quest> questPage = reactionRepository.findDistinctQuestsReactedByUser(userId, pageable);
 
-        return questPage.map(dtoConverterService::convertToQuestVerifyResponseDto);
+        return questPage.map(quest ->
+                dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, user));
     }
 
     // 북마크 추가
@@ -882,13 +928,93 @@ public class QuestService {
     }
 
     // 북마크 한 퀘스트들 불러오기
-    public Page<QuestVerifyResponseDto> getMyBookmarks(String authorization, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> getMyBookmarks(String authorization, Pageable pageable) {
         Long userId = jwtService.UserIdFromToken(authorization);
         User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
 
         Page<Quest> bookmarks = bookmarkRepository.findDistinctQuestsBookmarkedByUser(userId, pageable);
 
-        return bookmarks.map(dtoConverterService::convertToQuestVerifyResponseDto);
+        return bookmarks.map(quest -> dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, user));
+    }
+
+    public void cancelBookmark(String authorization, Long questId) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+
+        Optional<Bookmark> bookmark = bookmarkRepository.findByUser_IdAndQuest_Id(userId, questId);
+
+        if (bookmark.isPresent()) {
+            bookmarkRepository.delete(bookmark.get());
+        } else {
+            throw new EntityNotFoundException("북마크가 존재하지 않습니다.");
+        }
+    }
+
+    public QuestSummationDto getQuestSummation(String authorization, Long questId) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+
+        Quest quest = questRepository.findById(questId).orElseThrow(EntityNotFoundException::new);
+
+        List<QuestRecord> questRecords = questRecordRepository.findAllByQuest_Id(quest.getId());
+
+        List<QuestRecordDto> questRecordDtos = questRecords.stream().map(record -> {
+            List<RecordImage> images = recordImageRepository.findByQuestRecord_Id(record.getId());
+            List<String> imageUrls = images.stream()
+                    .map(RecordImage::getUrl)
+                    .toList();
+            return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
+        }).toList();
+
+        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_Id(quest.getId());
+
+        List<RecordCommentDto> questVerificationDtos = questVerifications.stream()
+                .map(questVerification -> {
+                    Optional<UserCharacter> uc = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId());
+                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage());
+                })
+                .toList();
+
+        return QuestSummationDto.builder()
+                .id(quest.getId())
+                .startDate(quest.getStartDate())
+                .endDate(quest.getEndDate())
+                .id(quest.getId())
+                .title(quest.getTitle())
+                .records(questRecordDtos)
+                .verifications(questVerificationDtos)
+                .build();
+    }
+
+    // 1번 도전과제 퀘스트 첫 생성
+    private void checkFirstQuestAchievement(User user) {
+        // '첫 걸음' 뱃지의 ID
+        final int BADGE_ID_FIRST_QUEST = 2;
+
+        boolean alreadyHasBadge = userBadgeRepository.existsByUser_IdAndBadge_Id(user.getId(), BADGE_ID_FIRST_QUEST);
+
+        if (alreadyHasBadge) {
+            return; // 이미 달성했으면 종료
+        }
+
+        // 현재까지의 총 퀘스트 횟수 조회
+        long questCount = questRepository.countByUser_Id(user.getId());
+
+        // 첫 퀘스트 확인
+        if (questCount == 1) {
+            Badge firstQuestBadge = badgeRepository.findById(BADGE_ID_FIRST_QUEST)
+                    .orElse(null);
+
+            if (firstQuestBadge != null) {
+                UserBadge newUserBadge = new UserBadge();
+                newUserBadge.setUser(user);
+                newUserBadge.setBadge(firstQuestBadge);
+                newUserBadge.setEquipped(false);
+                userBadgeRepository.save(newUserBadge);
+            }
+
+//            // 경험치 보상 지급 (예: 50 EXP) 추후에 추가 예정
+//            userService.addExpAndProcessLevelUp(user, 50);
+        }
     }
 
     // 추천 점수 계산 헬퍼 메서드

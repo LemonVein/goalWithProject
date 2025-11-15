@@ -14,6 +14,6 @@ public class Badge {
 
     private String name;
 
-    @Column(name = "image")
-    private String imageUrl;
+    @Column(name = "description")
+    private String description;
 }

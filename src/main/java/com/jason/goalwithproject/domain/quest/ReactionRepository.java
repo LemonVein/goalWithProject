@@ -24,4 +24,8 @@ public interface ReactionRepository extends JpaRepository<Reaction, Long> {
 
     @Query("SELECT DISTINCT r.quest FROM Reaction r WHERE r.user.id = :userId")
     Page<Quest> findDistinctQuestsReactedByUser(@Param("userId") Long userId, Pageable pageable);
+
+    // 사용자의 리액션 수 계산
+    @Query("SELECT COUNT(r) FROM Reaction r WHERE r.user.id = :userId AND r.quest.user.id != :userId")
+    long countReactionsOnOthersQuests(@Param("userId") Long userId);
 }

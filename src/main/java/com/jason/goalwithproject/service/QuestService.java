@@ -12,6 +12,7 @@ import com.jason.goalwithproject.dto.user.UserDto;
 import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -23,12 +24,14 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class QuestService {
 
     private final JwtService jwtService;
@@ -260,6 +263,8 @@ public class QuestService {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
 
+        User user = userRepository.findById(userId).get();
+
         Optional<Quest> targetQuest = questRepository.findByTeam_IdAndQuestStatus(teamId, QuestStatus.PROGRESS);
         if (!targetQuest.isPresent()) {
             return Map.of("status", "failure");
@@ -292,6 +297,8 @@ public class QuestService {
             }
         }
 
+        checkConsecutiveRecordAchievement(user);
+
         return Map.of("status", "success");
     }
 
@@ -299,6 +306,8 @@ public class QuestService {
     public Map<String, String> addQuestRecord(String authorization, Long questId, String text, List<MultipartFile> images) throws IOException {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
+
+        User user = userRepository.findById(userId).get();
 
         QuestRecord newQuestRecord = new QuestRecord();
         newQuestRecord.setText(text);
@@ -326,6 +335,7 @@ public class QuestService {
                 return Map.of("status", "failure");
             }
         }
+        checkConsecutiveRecordAchievement(user);
 
         return Map.of("status", "success");
     }
@@ -383,6 +393,8 @@ public class QuestService {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
 
+        User verifier = userRepository.findById(userId).get();
+
         Optional<QuestRecord> targetRecord = questRecordRepository.findById(recordId);
 
         Quest target = questRepository.findById(targetRecord.get().getQuest().getId()).orElse(null);
@@ -395,6 +407,10 @@ public class QuestService {
                 .comment(text)
                 .createdAt(LocalDateTime.now())
                 .build());
+
+        if (!targetRecord.get().getUser().getId().equals(userId)) {
+            checkVerificationOnOthersQuestsAchievement(verifier);
+        }
 
         return Map.of("status", "success");
 
@@ -653,6 +669,10 @@ public class QuestService {
         // 새로운 레벨업 방식, 경험치 지급 방법으로 대체
         // verifyingUser.setExp(verifyingUser.getExp() + 10);
         userService.addExpAndProcessLevelUp(verifyingUser, 10);
+
+        if (!targetQuest.getUser().getId().equals(userId)) {
+            checkVerificationOnOthersQuestsAchievement(verifyingUser);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -821,6 +841,8 @@ public class QuestService {
         newReaction.setQuest(quest);
         newReaction.setUser(user);
         newReaction.setReactionType(reactionType.name());
+
+        checkReactionOnOthersQuestsAchievement(user);
 
         reactionRepository.save(newReaction);
 
@@ -1016,6 +1038,118 @@ public class QuestService {
 //            userService.addExpAndProcessLevelUp(user, 50);
         }
     }
+
+    // 럭키7 사용자가 퀘스트 레코드 7일 연속 작성
+    private void checkConsecutiveRecordAchievement(User user) {
+        // '럭키7' 뱃지의 ID 3번
+        final int BADGE_ID_7_DAY_STREAK = 3;
+        final int STREAK_GOAL = 7; // 목표 연속일수
+
+        // 뱃지를 이미 가지고 있는지 확인
+        boolean alreadyHasBadge = userBadgeRepository.existsByUser_IdAndBadge_Id(user.getId(), BADGE_ID_7_DAY_STREAK);
+        if (alreadyHasBadge) {
+            return; // 이미 달성했으면 종료
+        }
+
+        // 오늘 날짜 및 7일 전 날짜 계산
+        LocalDate today = LocalDate.now();
+        LocalDateTime startDate = today.minusDays(STREAK_GOAL - 1).atStartOfDay(); // 6일 전 00:00 (오늘 포함 7일)
+
+        Set<LocalDate> uniqueDates = questRecordRepository.findDistinctRecordDatesByUserSince(user.getId(), startDate);
+
+        // 7일 연속인지 확인
+        int consecutiveDays = 0;
+        for (int i = 0; i < STREAK_GOAL; i++) {
+            if (uniqueDates.contains(today.minusDays(i))) {
+                consecutiveDays++;
+            } else {
+                // 연속이 깨졌으므로 중단
+                break;
+            }
+        }
+
+        // 7일 연속 달성 시 보상 지급
+        if (consecutiveDays == STREAK_GOAL) {
+            Badge streakBadge = badgeRepository.findById(BADGE_ID_7_DAY_STREAK)
+                    .orElse(null);
+
+            if (streakBadge != null) {
+                UserBadge newUserBadge = new UserBadge();
+                newUserBadge.setUser(user);
+                newUserBadge.setBadge(streakBadge);
+                newUserBadge.setEquipped(false);
+                userBadgeRepository.save(newUserBadge);
+
+                log.info("ACHIEVEMENT UNLOCKED: User {} 님이 '7일 연속 기록' 뱃지를 획득했습니다.", user.getId());
+            }
+        }
+    }
+
+    // 3번 (따봉요정) 도전과제 달성
+    private void checkReactionOnOthersQuestsAchievement(User user) {
+        // 따봉 요정 4번
+        final int BADGE_ID_REACTION_100 = 4;
+        final int GOAL_COUNT = 100;
+
+        // 뱃지를 이미 가지고 있는지 확인
+        boolean alreadyHasBadge = userBadgeRepository.existsByUser_IdAndBadge_Id(user.getId(), BADGE_ID_REACTION_100);
+        if (alreadyHasBadge) {
+            return; // 이미 달성했으면 종료
+        }
+
+        long reactionCount = reactionRepository.countReactionsOnOthersQuests(user.getId());
+
+        // 3. 100회 달성 시 보상 지급
+        if (reactionCount >= GOAL_COUNT) {
+
+            log.info("ACHIEVEMENT UNLOCKED: User {} 님이 '타인 글 리액션 100회' 도전과제를 달성했습니다.", user.getId());
+
+            Badge reactionBadge = badgeRepository.findById(BADGE_ID_REACTION_100)
+                    .orElse(null);
+
+            if (reactionBadge != null) {
+                UserBadge newUserBadge = new UserBadge();
+                newUserBadge.setUser(user);
+                newUserBadge.setBadge(reactionBadge);
+                newUserBadge.setEquipped(false); // 칭호는 지급하지만 바로 장착X
+                userBadgeRepository.save(newUserBadge);
+            }
+
+        }
+    }
+
+    // 5번 (인정드림) 도전과제 달성
+    private void checkVerificationOnOthersQuestsAchievement(User user) {
+        final int BADGE_ID_VERIFY_100 = 6;
+        final int GOAL_COUNT = 100;
+
+        boolean alreadyHasBadge = userBadgeRepository.existsByUser_IdAndBadge_Id(user.getId(), BADGE_ID_VERIFY_100);
+        if (alreadyHasBadge) return;
+
+        // 현재까지 '타인의 글'에 남긴 총 인증/댓글 횟수 조회
+        long verificationCount = questVerificationRepository.countVerificationsOnOthersContent(user.getId());
+
+        // 100회 달성 시 보상 지급
+        if (verificationCount >= GOAL_COUNT) {
+
+            log.info("ACHIEVEMENT UNLOCKED: User {} 님이 '타인 글 인증 100회' 도전과제를 달성했습니다.", user.getId());
+
+
+            Badge verifyBadge = badgeRepository.findById(BADGE_ID_VERIFY_100)
+                    .orElse(null);
+
+            if (verifyBadge != null) {
+                UserBadge newUserBadge = new UserBadge();
+                newUserBadge.setUser(user);
+                newUserBadge.setBadge(verifyBadge);
+                newUserBadge.setEquipped(false);
+                userBadgeRepository.save(newUserBadge);
+            }
+
+        }
+    }
+
+
 
     // 추천 점수 계산 헬퍼 메서드
     private double calculateRecommendationScore(User currentUser, User questOwner) {

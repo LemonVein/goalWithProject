@@ -24,6 +24,7 @@ public interface QuestRecordRepository extends JpaRepository<QuestRecord, Long> 
      * 특정 사용자가 특정 날짜 이후에 기록을 작성한 모든 '날짜'를 중복 없이 조회합니다.
      * (createdAt은 TIMESTAMP이므로, DATE() 함수를 사용해 날짜 부분만 추출합니다)
      */
-    @Query("SELECT DISTINCT FUNCTION('DATE', qr.createdAt) FROM QuestRecord qr WHERE qr.user.id = :userId AND qr.createdAt >= :startDate")
+    // FUNCTION('DATE', ...) 대신 CAST(... AS LocalDate)를 사용합니다.
+    @Query("SELECT DISTINCT CAST(qr.createdAt AS LocalDate) FROM QuestRecord qr WHERE qr.user.id = :userId AND qr.createdAt >= :startDate")
     Set<LocalDate> findDistinctRecordDatesByUserSince(@Param("userId") Long userId, @Param("startDate") LocalDateTime startDate);
 }

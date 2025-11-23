@@ -26,4 +26,14 @@ public interface QuestVerificationRepository extends JpaRepository<QuestVerifica
 
     @Query("SELECT DISTINCT qv.quest FROM QuestVerification qv WHERE qv.user.id = :userId")
     Page<Quest> findDistinctQuestsCommentedByUser(@Param("userId") Long userId, Pageable pageable);
+
+    // 특정 사용자가 타인의 콘텐츠에 남긴 인증 수 카운트
+    @Query("SELECT COUNT(qv) FROM QuestVerification qv " +
+            "WHERE qv.user.id = :userId " +
+            "AND (" +
+            "  (qv.questRecord IS NULL AND qv.quest.user.id != :userId) " + // 1. 퀘스트 직접 인증
+            "  OR " +
+            "  (qv.questRecord IS NOT NULL AND qv.questRecord.user.id != :userId) " + // 2. 퀘스트 기록에 댓글
+            ")")
+    long countVerificationsOnOthersContent(@Param("userId") Long userId);
 }

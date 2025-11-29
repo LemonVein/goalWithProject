@@ -68,11 +68,11 @@ public class UserService {
     public TokenResponse TryLogin(UserLoginDto userLoginDto) {
         User user = userRepository.findByEmail(userLoginDto.getEmail()).orElse(null);
         if (user == null) {
-            return null;
+            throw new EntityNotFoundException("이메일 또는 비밀번호가 잘못되었습니다");
         }
 
         if (!passwordEncoder.matches(userLoginDto.getPassword(), user.getPassword())) {
-            return null;
+            throw new EntityNotFoundException("이메일 또는 비밀번호가 잘못되었습니다");
         }
 
         Map<String, Object> claims = Map.of(
@@ -122,6 +122,7 @@ public class UserService {
         UserBadge userBadge = new UserBadge();
         userBadge.setUser(user);
         userBadge.setBadge(badgeRepository.findById(1).get());
+        userBadge.setEquipped(true);
         userBadgeRepository.save(userBadge);
 
         Map<String, Object> claims = Map.of(
@@ -134,12 +135,11 @@ public class UserService {
     }
 
     public UserDto getUserInfo(String authorization) {
-        Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
-        Long userId = Long.valueOf(claims.get("userId").toString());
+        Long userId = jwtService.UserIdFromToken(authorization);
 
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
-            return null;
+            throw new EntityNotFoundException("해당하는 유저가 없습니다.");
         }
 
         UserDto dto = dtoConverterService.convertToDto(user);
@@ -204,20 +204,18 @@ public class UserService {
             throw new AccessDeniedException("캐릭터를 변경할 권한이 없습니다.");
         }
 
-        Long userCharacterIdToEquip = characterIdDto.getId();
+        int userCharacterIdToEquip = characterIdDto.getId();
 
-        UserCharacter newEquippedCharacter = userCharacterRepository.findById(userCharacterIdToEquip)
-                .orElseThrow(() -> new EntityNotFoundException("해당 캐릭터를 소유하고 있지 않습니다."));
+        boolean equippedCharacter = userCharacterRepository.existsByUser_IdAndCharacterImage_Id(myId, userCharacterIdToEquip);
+        if (!equippedCharacter) {throw new EntityNotFoundException("해당 캐릭터를 소유하고 있지 않습니다.");}
 
-        if (!newEquippedCharacter.getUser().getId().equals(userId)) {
-            throw new AccessDeniedException("자신이 소유한 캐릭터만 장착할 수 있습니다.");
-        }
 
         userCharacterRepository.findByUser_IdAndIsEquippedTrue(userId).ifPresent(oldEquippedCharacter -> {
             oldEquippedCharacter.setEquipped(false);
         });
 
-        newEquippedCharacter.setEquipped(true);
+        UserCharacter newCharacter =  userCharacterRepository.findByUser_IdAndCharacterImage_Id(myId, characterIdDto.getId());
+        newCharacter.setEquipped(true);
     }
 
     // 수정 필요
@@ -249,6 +247,25 @@ public class UserService {
         }
 
         return dtoConverterService.convertToUserInformationDto(user);
+    }
+
+    @Transactional
+    public void updateBadge(String authorization, int badgeId) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+
+        boolean isHasBadge = userBadgeRepository.existsByUser_IdAndBadge_Id(userId, badgeId);
+        if (isHasBadge) {
+            UserBadge userBadge = userBadgeRepository.findByUser_IdAndEquippedTrue(userId);
+            userBadge.setEquipped(false);
+
+            UserBadge changedBadge = userBadgeRepository.findByUser_IdAndBadge_Id(userId, badgeId);
+            changedBadge.setEquipped(true);
+
+            userBadgeRepository.save(userBadge);
+            userBadgeRepository.save(changedBadge);
+        } else {
+            throw new EntityNotFoundException("해당 뱃지를 얻지 않았습니다.");
+        }
     }
 
     // 이름으로 유저들을 검색하는 메서드
@@ -343,9 +360,7 @@ public class UserService {
         String name = (String) profile.get("nickname");
 
         if (email == null) {
-            // 비즈니스 로직에 따라 처리:
-            // 1. 에러를 발생시켜 프론트에서 이메일 동의를 다시 받도록 함 (권장)
-            // 2. 또는, 이메일 없이 Kakao ID(kakaoUserInfo.get("id"))를 기반으로 회원가입
+            // 에러를 발생시켜 프론트에서 이메일 동의를 다시 받도록 함
             throw new IllegalArgumentException("카카오 로그인 시 이메일 제공에 동의해야 합니다.");
         }
 

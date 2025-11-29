@@ -14,9 +14,13 @@ public interface UserCharacterRepository extends JpaRepository<UserCharacter, Lo
 
     UserCharacter findById(long id);
 
+    UserCharacter findByUser_IdAndCharacterImage_Id(Long id, int characterImageId);
+
     Optional<UserCharacter> findByUser_IdAndIsEquippedTrue(Long userId);
 
     List<UserCharacter> findAllByUser_Id(Long userId);
 
     Page<UserCharacter> findAllByUser_Id(Long userId, Pageable pageable);
+
+    boolean existsByUser_IdAndCharacterImage_Id(Long userId, int characterImageId);
 }

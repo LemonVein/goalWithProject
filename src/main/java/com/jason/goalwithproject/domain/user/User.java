@@ -2,6 +2,9 @@ package com.jason.goalwithproject.domain.user;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user")
@@ -34,9 +37,9 @@ public class User {
     @JoinColumn(name = "user_type_id", referencedColumnName = "id")
     private UserType userType;
 
-//    @CreationTimestamp
-//    @Column(name = "created_at")
-//    private LocalDateTime createdAt;
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     public User(String name, String email, String password, String nickName, UserType userType) {
         this.name = name;

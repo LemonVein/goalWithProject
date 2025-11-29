@@ -83,6 +83,12 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/badge/{badgeId}")
+    public ResponseEntity<Void> UpdateEquippedBadge(@RequestHeader("Authorization") String authorization, @PathVariable("badgeId") int badgeId) {
+        userService.updateBadge(authorization, badgeId);
+        return ResponseEntity.noContent().build();
+    }
+
 
     // refresh 토큰 재발급
     @PostMapping("/refresh")

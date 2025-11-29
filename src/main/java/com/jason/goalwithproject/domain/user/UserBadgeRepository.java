@@ -11,6 +11,8 @@ public interface UserBadgeRepository extends JpaRepository<UserBadge, Integer> {
 
     UserBadge findByUser_IdAndEquippedTrue(Long id);
 
+    UserBadge findByUser_IdAndBadge_Id(Long id, int badgeId);
+
     List<UserBadge> findAllByUser_Id(Long id);
 
     // 해당 뱃지를 가지고 있는 확인 (업적용)

@@ -7,12 +7,12 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CharacterDto {
-    private Long id;
+    private int id;
     private String character;
     private String name;
 
     public CharacterDto(UserCharacter userCharacter) {
-        this.id = userCharacter.getId();
+        this.id = userCharacter.getCharacterImage().getId();
         this.character = userCharacter.getCharacterImage().getImage();
         this.name = userCharacter.getCharacterImage().getName();
     }

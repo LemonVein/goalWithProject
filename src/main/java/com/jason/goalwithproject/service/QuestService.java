@@ -3,6 +3,8 @@ package com.jason.goalwithproject.service;
 import com.jason.goalwithproject.config.S3Uploader;
 import com.jason.goalwithproject.domain.custom.Badge;
 import com.jason.goalwithproject.domain.custom.BadgeRepository;
+import com.jason.goalwithproject.domain.custom.CharacterImage;
+import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.team.TeamRepository;
@@ -44,6 +46,7 @@ public class QuestService {
     private final ReactionRepository reactionRepository;
     private final PeerShipRepository peerShipRepository;
     private final UserRepository userRepository;
+    private final CharacterImageRepository characterImageRepository;
     private final S3Uploader s3Uploader;
     private final DtoConverterService dtoConverterService;
     private final BookmarkRepository bookmarkRepository;
@@ -318,22 +321,25 @@ public class QuestService {
 
         // 여기에 이미지들을 S3Uploader를 통해 업로드 하고 url 들을 리턴해주기
         if (images != null && !images.isEmpty()) {
-            List<RecordImage> recordImages = new ArrayList<>();
-            try {
-                for (MultipartFile image : images) {
-                    if (!image.isEmpty()) {
-                        String targetUrl = s3Uploader.upload(image, "record-image");
-                        RecordImage recordImage = new RecordImage();
-                        recordImage.setUrl(targetUrl);
-                        recordImage.setQuestRecord(newQuestRecord);
-                        recordImages.add(recordImage);
-                    }
-                }
-                recordImageRepository.saveAll(recordImages);
+            List<RecordImage> recordImages = images.parallelStream()
+                    .filter(image -> !image.isEmpty())
+                    .map(image -> {
+                        try {
+                            // S3 업로드 (병렬로 실행됨)
+                            String targetUrl = s3Uploader.upload(image, "record-image");
 
-            } catch (IOException e) {
-                return Map.of("status", "failure");
-            }
+                            RecordImage recordImage = new RecordImage();
+                            recordImage.setUrl(targetUrl);
+                            recordImage.setQuestRecord(newQuestRecord);
+                            return recordImage;
+                        } catch (IOException e) {
+                            // 람다 내부에서는 Checked Exception을 직접 던질 수 없으므로 RuntimeException으로 감쌈
+                            throw new RuntimeException("이미지 업로드 중 오류 발생", e);
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+            recordImageRepository.saveAll(recordImages); // DB에 한 번에 저장
         }
         checkConsecutiveRecordAchievement(user);
 
@@ -411,6 +417,10 @@ public class QuestService {
         if (!targetRecord.get().getUser().getId().equals(userId)) {
             checkVerificationOnOthersQuestsAchievement(verifier);
         }
+
+        // 4번 도전과제 스마일 피코 체크 (첫 피인증시)
+        User recordUser = targetRecord.get().getUser();
+        checkFirstVerificationReceivedAchievement(recordUser);
 
         return Map.of("status", "success");
 
@@ -541,6 +551,7 @@ public class QuestService {
 
         Quest targetQuest = questRepository.findById(questId)
                 .orElseThrow(() -> new EntityNotFoundException("해당 퀘스트를 찾을 수 없습니다. ID: " + questId));
+        User questOwner = targetQuest.getUser();
 
         Optional<Quest> target = questRepository.findById(questId);
         if (!target.get().getUser().getId().equals(userId)) {
@@ -553,6 +564,7 @@ public class QuestService {
             }
         }
 
+        boolean isSuccess = false;
         if (target.get().isVerificationRequired()) {
             if (target.get().getQuestStatus() == QuestStatus.VERIFY) {
                 if (target.get().getVerificationCount() < target.get().getRequiredVerification()) {
@@ -576,6 +588,7 @@ public class QuestService {
                 }
 
                 target.get().setQuestStatus(QuestStatus.COMPLETE);
+                isSuccess = true;
 
                 // 새로운 레벨업 메서드로 대체
                 // target.get().getUser().setExp(target.get().getUser().getExp() + score);
@@ -634,10 +647,15 @@ public class QuestService {
             }
 
             target.get().setQuestStatus(QuestStatus.COMPLETE);
+            isSuccess = true;
             // 새로운 레벨업 방법으로 대체
             // target.get().getUser().setExp(target.get().getUser().getExp() + score);
             userService.addExpAndProcessLevelUp(target.get().getUser(), score);
             target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
+        }
+
+        if (isSuccess) {
+            checkFirstQuestCompletionAchievement(questOwner);
         }
 
         questRepository.save(target.get());
@@ -673,6 +691,10 @@ public class QuestService {
         if (!targetQuest.getUser().getId().equals(userId)) {
             checkVerificationOnOthersQuestsAchievement(verifyingUser);
         }
+
+        // 4번 도전과제 스마일 피코 체크 (첫 피인증시)
+        User questOwner = targetQuest.getUser();
+        checkFirstVerificationReceivedAchievement(questOwner);
     }
 
     @Transactional(readOnly = true)
@@ -1146,6 +1168,73 @@ public class QuestService {
                 userBadgeRepository.save(newUserBadge);
             }
 
+        }
+    }
+
+    // 첫 퀘스트 완료 캐릭터 지급
+    private void checkFirstQuestCompletionAchievement(User user) {
+        // 완료 피코 캐릭터 아이디
+        final int REWARD_CHARACTER_ID = 3;
+
+        boolean flag = userCharacterRepository.existsByUser_IdAndCharacterImage_Id(user.getId(), REWARD_CHARACTER_ID);
+        if (flag) return;
+
+        // 현재 완료된 퀘스트 개수 조회
+        long completedCount = questRepository.countByUser_IdAndQuestStatus(user.getId(), QuestStatus.COMPLETE);
+
+        if (completedCount == 1) {
+
+            // 캐릭터 지급
+            CharacterImage rewardCharacter = characterImageRepository.findById(REWARD_CHARACTER_ID);
+
+            if (rewardCharacter != null) {
+                // 이미 가지고 있는지 이중 체크
+                boolean alreadyHas = userCharacterRepository.findAllByUser_Id(user.getId()).stream()
+                        .anyMatch(uc -> uc.getCharacterImage().getId() == REWARD_CHARACTER_ID);
+
+                if (!alreadyHas) {
+                    UserCharacter newUserCharacter = new UserCharacter();
+                    newUserCharacter.setUser(user);
+                    newUserCharacter.setCharacterImage(rewardCharacter);
+                    newUserCharacter.setEquipped(false); // 지급만 하고 장착은 안 함
+                    userCharacterRepository.save(newUserCharacter);
+
+                    log.info("ACHIEVEMENT UNLOCKED: User {} 님이 첫 퀘스트 완료 보상으로 캐릭터({})를 획득했습니다.", user.getId(), rewardCharacter.getName());
+                }
+            }
+        }
+    }
+
+    // 첫 인증 받기 메서드
+    private void checkFirstVerificationReceivedAchievement(User user) {
+        // 스마일 피코
+        final int REWARD_CHARACTER_ID = 4;
+
+        // 이미 해당 캐릭터를 가지고 있는지 확인 (중복 지급 방지)
+        boolean alreadyHas = userCharacterRepository.findAllByUser_Id(user.getId()).stream()
+                .anyMatch(uc -> uc.getCharacterImage().getId() == REWARD_CHARACTER_ID);
+
+        if (alreadyHas) {
+            return;
+        }
+
+        // 현재까지 '받은' 총 인증/댓글 개수 조회
+        long receivedCount = questVerificationRepository.countVerificationsReceivedByUser(user.getId());
+
+        // 방금 받았으므로 개수가 1개
+        if (receivedCount == 1) {
+
+            CharacterImage rewardCharacter = characterImageRepository.findById(REWARD_CHARACTER_ID);
+
+            if (rewardCharacter != null) {
+                UserCharacter newUserCharacter = new UserCharacter();
+                newUserCharacter.setUser(user);
+                newUserCharacter.setCharacterImage(rewardCharacter);
+                newUserCharacter.setEquipped(false);
+                userCharacterRepository.save(newUserCharacter);
+
+                log.info("ACHIEVEMENT UNLOCKED: User {} 님이 첫 인증/댓글을 받아 캐릭터({})를 획득했습니다.", user.getId(), rewardCharacter.getName());
+            }
         }
     }
 

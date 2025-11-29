@@ -5,6 +5,6 @@ import lombok.Getter;
 
 @Getter
 public class CharacterIdDto {
-    @JsonProperty("character")
-    private Long id;
+    @JsonProperty("character_id")
+    private int id;
 }

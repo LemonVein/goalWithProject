@@ -42,5 +42,8 @@ public interface QuestRepository extends JpaRepository<Quest, Long> {
     // 사용자의 퀘스트 수 반환 (업적용)
     long countByUser_Id(Long userId);
 
+    // 특정 상태의 퀘스트 상태들 조회
+    long countByUser_IdAndQuestStatus(Long userId, QuestStatus questStatus);
+
 
 }

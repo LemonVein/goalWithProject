@@ -1,12 +1,15 @@
 package com.jason.goalwithproject.service;
 
 import com.jason.goalwithproject.config.JwtTokenProvider;
+import com.jason.goalwithproject.domain.custom.CharacterImage;
+import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
 import com.jason.goalwithproject.dto.user.UserWithScore;
 import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +20,13 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PeerService {
     private final PeerShipRepository peerShipRepository;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserCharacterRepository userCharacterRepository;
+    private final CharacterImageRepository characterImageRepository;
     private final DtoConverterService dtoConverterService;
     private final JwtService jwtService;
 
@@ -140,6 +145,10 @@ public class PeerService {
             PeerShip peerShip = targetPeerShip.get();
             peerShip.setStatus(PeerStatus.ACCEPTED);
             peerShipRepository.save(peerShip);
+
+            // 도전과제 체크
+            checkFirstPeerAchievement(peerShip.getRequester());
+            checkFirstPeerAchievement(peerShip.getAddressee());
             return Map.of("status", "success");
         }
         return Map.of("status", "failed");
@@ -283,6 +292,39 @@ public class PeerService {
                 .orElseThrow(() -> new EntityNotFoundException("취소할 수 있는 친구 요청이 없습니다"));
 
         peerShipRepository.delete(peerShipToCancel);
+    }
+
+    // 헬로 피코 지급 메서드
+    private void checkFirstPeerAchievement(User user) {
+        // 헬로 피코
+        final int REWARD_CHARACTER_ID = 5;
+
+        // 1. 이미 해당 캐릭터를 가지고 있는지 확인 (중복 지급 방지)
+        boolean alreadyHas = userCharacterRepository.existsByUser_IdAndCharacterImage_Id(
+                user.getId(), REWARD_CHARACTER_ID);
+
+        if (alreadyHas) {
+            return;
+        }
+
+        // 현재까지 'ACCEPTED' 상태인 동료 관계 개수 조회
+        long acceptedPeerCount = peerShipRepository.countAcceptedPeersByUserId(user.getId());
+
+        if (acceptedPeerCount == 1) {
+
+            // 캐릭터 지급
+            CharacterImage rewardCharacter = characterImageRepository.findById(REWARD_CHARACTER_ID);
+
+            if (rewardCharacter != null) {
+                UserCharacter newUserCharacter = new UserCharacter();
+                newUserCharacter.setUser(user);
+                newUserCharacter.setCharacterImage(rewardCharacter);
+                newUserCharacter.setEquipped(false); // 지급만 하고 장착은 안 함
+                userCharacterRepository.save(newUserCharacter);
+
+                log.info("ACHIEVEMENT UNLOCKED: User {} 님이 첫 퀘스트 완료 보상으로 캐릭터({})를 획득했습니다.", user.getId(), rewardCharacter.getName());
+            }
+        }
     }
 
     // 추천 점수 계산 헬퍼 메서드

@@ -35,7 +35,7 @@ public interface PeerShipRepository extends JpaRepository<PeerShip, Long> {
 
     // 동료 맺은 수 카운트
     @Query("SELECT COUNT(ps) FROM PeerShip ps " +
-            "WHERE (ps.requester.id = :userId OR ps.accepter.id = :userId) " +
+            "WHERE (ps.requester.id = :userId OR ps.addressee.id = :userId) " +
             "AND ps.status = com.jason.goalwithproject.domain.user.PeerStatus.ACCEPTED")
     long countAcceptedPeersByUserId(@Param("userId") Long userId);
 }

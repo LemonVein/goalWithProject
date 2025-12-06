@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: goalwith-app
+    build: .
+    ports:
+      - "8080:8080" # 호스트 8080 -> 컨테이너 8080 연결
+    environment:
+      # ★ 중요: MySQL 컨테이너의 서비스 이름인 'db'를 호스트 주소로 사용합니다.
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/goal_with?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1215
+    depends_on:
+      - db # db 컨테이너가 먼저 켜져야 함
+    restart: always
+
+  # 2. MySQL 데이터베이스
+  db:
+    container_name: goalwith-db
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: goal_with
+      MYSQL_ROOT_PASSWORD: 1215
+    volumes:
+      # 호스트의 ./db-data 폴더와 컨테이너의 데이터 폴더를 연결 (데이터 보존용)
+      - ./db-data:/var/lib/mysql
+    command:
+      # 한글 저장을 위한 문자셋 설정
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: always

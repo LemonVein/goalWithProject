@@ -688,6 +688,7 @@ public class QuestService {
         // verifyingUser.setExp(verifyingUser.getExp() + 10);
         userService.addExpAndProcessLevelUp(verifyingUser, 10);
 
+        // 인정드림 뱃지 체크
         if (!targetQuest.getUser().getId().equals(userId)) {
             checkVerificationOnOthersQuestsAchievement(verifyingUser);
         }
@@ -695,6 +696,9 @@ public class QuestService {
         // 4번 도전과제 스마일 피코 체크 (첫 피인증시)
         User questOwner = targetQuest.getUser();
         checkFirstVerificationReceivedAchievement(questOwner);
+
+        // 시작 피코 체크
+        checkFirstVerificationOnOthersQuestAchievement(verifyingUser);
     }
 
     @Transactional(readOnly = true)
@@ -1222,7 +1226,7 @@ public class QuestService {
         long receivedCount = questVerificationRepository.countVerificationsReceivedByUser(user.getId());
 
         // 방금 받았으므로 개수가 1개
-        if (receivedCount == 1) {
+        if (receivedCount >= 1) {
 
             CharacterImage rewardCharacter = characterImageRepository.findById(REWARD_CHARACTER_ID);
 
@@ -1234,6 +1238,37 @@ public class QuestService {
                 userCharacterRepository.save(newUserCharacter);
 
                 log.info("ACHIEVEMENT UNLOCKED: User {} 님이 첫 인증/댓글을 받아 캐릭터({})를 획득했습니다.", user.getId(), rewardCharacter.getName());
+            }
+        }
+    }
+
+    // 시작 피코 도전과제 메서드
+    private void checkFirstVerificationOnOthersQuestAchievement(User user) {
+
+        final int REWARD_CHARACTER_ID = 6;
+
+        boolean alreadyHas = userCharacterRepository.existsByUser_IdAndCharacterImage_Id(
+                user.getId(), REWARD_CHARACTER_ID);
+
+        if (alreadyHas) {
+            return;
+        }
+
+        // 현재까지 타인 퀘스트에 남긴 총 인증 횟수 조회
+        long count = questVerificationRepository.countQuestVerificationsOnOthers(user.getId());
+
+        if (count == 1) {
+
+            CharacterImage rewardCharacter = characterImageRepository.findById(REWARD_CHARACTER_ID);
+
+            if (rewardCharacter != null) {
+                UserCharacter newUserCharacter = new UserCharacter();
+                newUserCharacter.setUser(user);
+                newUserCharacter.setCharacterImage(rewardCharacter);
+                newUserCharacter.setEquipped(false);
+                userCharacterRepository.save(newUserCharacter);
+
+                log.info("ACHIEVEMENT UNLOCKED: User {} 님이 첫 인증/댓글을 해서 캐릭터({})를 획득했습니다.", user.getId(), rewardCharacter.getName());
             }
         }
     }

@@ -5,11 +5,33 @@ services:
     container_name: goalwith-app
     build: .
     ports:
-      - "80:8080"
+      - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/goal_with?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1215
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+      # spring.cloud.aws.credentials.secret-key
+      SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY: ${AWS_SECRET_KEY}
+
+      SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+
+      # spring.cloud.aws.region.static
+      SPRING_CLOUD_AWS_REGION_STATIC: ap-northeast-2
+
+      # spring.cloud.aws.s3.bucket
+      SPRING_CLOUD_AWS_S3_BUCKET: goal-with-project-image
+
+      # google.api.client-id.web
+      GOOGLE_API_CLIENT_ID_WEB: ${GOOGLE_WEB_ID}
+
+      # google.api.client-id.android
+      GOOGLE_API_CLIENT_ID_ANDROID: ${GOOGLE_AND_ID}
+
+      # google.api.client-id.ios
+      GOOGLE_API_CLIENT_ID_IOS: ${GOOGLE_IOS_ID}
     depends_on:
       - db
     restart: always
@@ -21,11 +43,11 @@ services:
       - "3306:3306"
     environment:
       MYSQL_DATABASE: goal_with
-      MYSQL_ROOT_PASSWORD: 1215
+      MYSQL_ROOT_PASSWORD: ${DATASOURCE_PASSWORD}
     volumes:
       # 호스트의 ./db-data 폴더와 컨테이너의 데이터 폴더를 연결 (데이터 보존용)
       - ./db-data:/var/lib/mysql
     command:
-      # 한글 저장을 위한 문자셋 설정
+      # 한글 저장 문자셋
       --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     restart: always

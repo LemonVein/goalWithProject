@@ -11,33 +11,30 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface QuestRepository extends JpaRepository<Quest, Long> {
-    Optional<Quest> findByUser_IdAndIsMainTrue(Long id);
-    List<Quest> findAllByUser_Id(Long id);
+public interface QuestRepository extends JpaRepository<Quest, Long>, QuestRepositoryCustom {
     Optional<Quest> findById(Long id);
     Optional<Quest> findByTeam_Id(int teamId);
     List<Quest> findByTeam_IdIn(List<Integer> teamIds);
-    Page<Quest> findAllByVerificationRequiredTrueAndQuestStatus(QuestStatus questStatus, Pageable pageable);
     List<Quest> findAllByVerificationRequiredTrueAndQuestStatus(QuestStatus questStatus);
     List<Quest> findAllByUser_IdAndTeamIsNull(Long id);
     Optional<Quest> findByUser_IdAndIsMainTrueAndTeamIsNull(Long id);
     Optional<Quest> findByTeam_IdAndQuestStatus(int teamId, QuestStatus questStatus);
 
-    @Query("SELECT q FROM Quest q WHERE " +
-            "q.questStatus = :status AND q.verificationRequired = true AND " +
-            "(LOWER(q.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(q.description) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    List<Quest> findVerifiableQuestsByKeyword(
-            @Param("status") QuestStatus status,
-            @Param("keyword") String keyword);
-
-    @Query("SELECT q FROM Quest q WHERE " +
-            "q.user.id IN :peerIds AND " +
-            "q.questStatus = :status AND " +
-            "q.verificationRequired = true")
-    Page<Quest> findPeerQuestsForVerification(
-            @Param("peerIds") List<Long> peerIds,
-            @Param("status") QuestStatus status,
-            Pageable pageable);
+//    @Query("SELECT q FROM Quest q WHERE " +
+//            "q.questStatus = :status AND q.verificationRequired = true AND " +
+//            "(LOWER(q.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(q.description) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+//    List<Quest> findVerifiableQuestsByKeyword(
+//            @Param("status") QuestStatus status,
+//            @Param("keyword") String keyword);
+//
+//    @Query("SELECT q FROM Quest q WHERE " +
+//            "q.user.id IN :peerIds AND " +
+//            "q.questStatus = :status AND " +
+//            "q.verificationRequired = true")
+//    Page<Quest> findPeerQuestsForVerification(
+//            @Param("peerIds") List<Long> peerIds,
+//            @Param("status") QuestStatus status,
+//            Pageable pageable);
 
     // 사용자의 퀘스트 수 반환 (업적용)
     long countByUser_Id(Long userId);

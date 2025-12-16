@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class PeerService {
     private final PeerShipRepository peerShipRepository;
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
     private final UserCharacterRepository userCharacterRepository;
     private final CharacterImageRepository characterImageRepository;
     private final DtoConverterService dtoConverterService;
@@ -115,7 +114,7 @@ public class PeerService {
                 userId, PeerStatus.PENDING, pageable);
 
         return requestPage.map(peerShip -> {
-            User requester = peerShip.getRequester(); // 요청을 보낸 사람(requester)의 정보를 가져옵니다.
+            User requester = peerShip.getRequester(); // 요청을 보낸 사람(requester)의 정보를 가져옴.
 
             UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(requester.getId()).get();
             String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
@@ -208,7 +207,7 @@ public class PeerService {
 
         return myPeers.stream()
                 .map(peerShip -> {
-                    // '나'가 아닌 '상대방(동료)'이 누구인지 확인하여 그 ID를 반환합니다.
+                    // 상대방을 확인하여 ID 반환
                     if (peerShip.getRequester().getId().equals(currentUserId)) {
                         return peerShip.getAddressee().getId();
                     } else {
@@ -233,23 +232,21 @@ public class PeerService {
         // DB에서 가져올 후보군을 200명으로 제한 (최신 가입자 순)
         Pageable candidatePageable = PageRequest.of(0, 200, Sort.by(Sort.Direction.DESC, "id"));
 
-        // 레벨 범위에 맞는 사용자들을 후보군으로 조회합니다. (본인 제외)
+        // 레벨 범위에 맞는 사용자들을 후보군으로 조회. (본인 제외)
         Page<User> candidatePage = userRepository.findByLevelBetweenAndIdNot(
                 minLevel, maxLevel, currentUserId, candidatePageable);
         List<User> fullUsers = candidatePage.getContent();
 
-        // 현재 사용자의 모든 '친구' 관계를 조회합니다. (ACCEPTED 상태)
+        // 현재 사용자의 모든 '친구' 관계를 조회. (ACCEPTED 상태)
         List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);
 
-        // 조회된 친구 관계에서 상대방의 ID만 추출하여 Set으로 만듭니다.
+        // 조회된 친구 관계에서 상대방의 ID만 추출.
         Set<Long> friendIdSet = myPeers.stream()
                 .map(peerShip -> peerShip.getRequester().getId().equals(currentUserId)
                         ? peerShip.getAddressee().getId()
                         : peerShip.getRequester().getId())
                 .collect(Collectors.toSet());
 
-
-        // 각 유저의 '추천 점수'를 계산하고, 유저와 점수를 함께 저장합니다.
         List<UserWithScore> scoredUsers = fullUsers.stream()
                 .filter(user -> {
                     Long userId = user.getId();
@@ -262,10 +259,8 @@ public class PeerService {
                 })
                 .collect(Collectors.toList());
 
-        // 추천 점수가 높은 순서대로 정렬합니다.
         scoredUsers.sort(Comparator.comparingDouble(UserWithScore::getScore).reversed());
 
-        // 정렬된 리스트를 수동으로 페이지네이션합니다.
         int start = (int) pageable.getOffset();
 
         if (start >= scoredUsers.size()) {
@@ -299,7 +294,7 @@ public class PeerService {
         // 헬로 피코
         final int REWARD_CHARACTER_ID = 5;
 
-        // 1. 이미 해당 캐릭터를 가지고 있는지 확인 (중복 지급 방지)
+        // 이미 해당 캐릭터를 가지고 있는지 확인
         boolean alreadyHas = userCharacterRepository.existsByUser_IdAndCharacterImage_Id(
                 user.getId(), REWARD_CHARACTER_ID);
 
@@ -307,7 +302,6 @@ public class PeerService {
             return;
         }
 
-        // 현재까지 'ACCEPTED' 상태인 동료 관계 개수 조회
         long acceptedPeerCount = peerShipRepository.countAcceptedPeersByUserId(user.getId());
 
         if (acceptedPeerCount == 1) {
@@ -319,7 +313,7 @@ public class PeerService {
                 UserCharacter newUserCharacter = new UserCharacter();
                 newUserCharacter.setUser(user);
                 newUserCharacter.setCharacterImage(rewardCharacter);
-                newUserCharacter.setEquipped(false); // 지급만 하고 장착은 안 함
+                newUserCharacter.setEquipped(false);
                 userCharacterRepository.save(newUserCharacter);
 
                 log.info("ACHIEVEMENT UNLOCKED: User {} 님이 첫 퀘스트 완료 보상으로 캐릭터({})를 획득했습니다.", user.getId(), rewardCharacter.getName());

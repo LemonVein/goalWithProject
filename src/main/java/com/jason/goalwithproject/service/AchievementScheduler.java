@@ -27,7 +27,6 @@ public class AchievementScheduler {
     // 쉬는 피코 이미지 데이터베이스 아이디
     private static final int REST_PICO_ID = 2;
 
-    // 매일 자정(00:00:00)에 실행
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void giveRestPicoTask() {
@@ -37,7 +36,7 @@ public class AchievementScheduler {
         // 기준 시간 설정 (7일 전)
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
 
-        // 대상 사용자 조회 (쿼리 한 번으로 최적화)
+        // 대상 사용자 조회
         List<User> lazyUsers = userRepository.findUsersEligibleForLazyCharacter(sevenDaysAgo, REST_PICO_ID);
 
         if (lazyUsers.isEmpty()) {
@@ -64,6 +63,6 @@ public class AchievementScheduler {
             log.info("GIVE CHARACTER: User {} 님에게 '{}' 캐릭터 지급 완료", user.getId(), lazyCharacterImage.getName());
         }
 
-        log.info("SCHEDULER END: 총 {}명에게 쉬는 피코 캐릭터 지급 완료", lazyUsers.size());
+        log.info("총 {}명에게 쉬는 피코 캐릭터 지급 완료", lazyUsers.size());
     }
 }

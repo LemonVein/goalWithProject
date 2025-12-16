@@ -23,6 +23,7 @@ public class Team {
     private String description;
 
     @Column(name = "is_public")
+    @Builder.Default
     private boolean isPublic = false;
 
     @CreationTimestamp

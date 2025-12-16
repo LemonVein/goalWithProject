@@ -178,7 +178,7 @@ public class QuestService {
             }
         });
 
-        // 3. '내가 남긴' 리액션 정보를 조회합니다.
+        // 자신이 남긴 리액션 정보를 조회
         Map<ReactionType, Boolean> myReactionMap = new EnumMap<>(ReactionType.class);
         // 모든 ReactionType에 대해 false로 초기화
         for (ReactionType type : ReactionType.values()) {
@@ -325,7 +325,7 @@ public class QuestService {
                     .filter(image -> !image.isEmpty())
                     .map(image -> {
                         try {
-                            // S3 업로드 (병렬로 실행됨)
+                            // S3 업로드 (제미나이의 도움, 병렬로 실행됨)
                             String targetUrl = s3Uploader.upload(image, "record-image");
 
                             RecordImage recordImage = new RecordImage();
@@ -333,7 +333,6 @@ public class QuestService {
                             recordImage.setQuestRecord(newQuestRecord);
                             return recordImage;
                         } catch (IOException e) {
-                            // 람다 내부에서는 Checked Exception을 직접 던질 수 없으므로 RuntimeException으로 감쌈
                             throw new RuntimeException("이미지 업로드 중 오류 발생", e);
                         }
                     })
@@ -357,7 +356,7 @@ public class QuestService {
         Page<QuestRecord> recordPage = questRecordRepository.findAllByQuest_Id(teamQuest.getId(), pageable);
 
         return recordPage.map(record -> {
-            // 해당 기록에 달린 모든 인증(Verification)들을 조회합니다.
+            // 해당 기록에 달린 모든 인증(즉 댓글)들을 조회
             List<QuestVerification> verifications = questVerificationRepository.findAllByQuestRecord_Id(record.getId());
             List<RecordCommentDto> verificationDtos = verifications.stream()
                     .map(verification -> {
@@ -477,7 +476,7 @@ public class QuestService {
         List<RecordImage> imagesToDelete = new ArrayList<>();
 
         for (RecordImage dbImage : currentImages) {
-            // DB의 이미지가 클라이언트가 보낸 "유지할 이미지 목록"에 포함되어 있지 않다면
+            // DB의 이미지가 클라이언트가 보낸 유지할 이미지 목록에 포함되어 있지 않다면
             if (!dto.getExistingImages().contains(dbImage.getUrl())) {
                 imagesToDelete.add(dbImage);
             }
@@ -710,7 +709,7 @@ public class QuestService {
         List<Quest> candidates = questRepository.findAllByVerificationRequiredTrueAndQuestStatus(
                 QuestStatus.VERIFY);
 
-        // 각 퀘스트의 '추천 점수'를 계산하고, 퀘스트와 점수를 함께 저장합니다.
+        // 각 퀘스트의 '추천 점수'를 계산하고, 퀘스트와 점수를 함께 저장
         List<QuestWithScore> scoredQuests = candidates.stream()
                 // 본인이 작성한 퀘스트는 제외
                 .filter(quest -> !quest.getUser().getId().equals(currentUserId))
@@ -720,10 +719,9 @@ public class QuestService {
                 })
                 .collect(Collectors.toList());
 
-        // 추천 점수가 높은 순서대로 정렬합니다.
+        // 추천 점수가 높은 순서대로 정렬
         scoredQuests.sort(Comparator.comparingDouble(QuestWithScore::getScore).reversed());
 
-        // 정렬된 리스트를 수동으로 페이지네이션합니다.
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), scoredQuests.size());
         List<Quest> pagedResult = scoredQuests.subList(start, end).stream()
@@ -754,6 +752,7 @@ public class QuestService {
         questVerificationRepository.save(questVerification.get());
     }
 
+    // 인증 삭제 메서드
     @Transactional
     public void deleteVerification(String authorization, Long verificationId) throws AccessDeniedException {
         Long userId = jwtService.UserIdFromToken(authorization);
@@ -814,13 +813,13 @@ public class QuestService {
 
     }
 
-    // 친구들의 인증 게시물들을 불러옵니다. (최신순)
+    // 친구들의 인증 게시물들을 불러오기 (최신순)
     @Transactional(readOnly = true)
     public Page<UserQuestVerifyResponseDto> getPeerQuestsForVerification(String authorization, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
         Optional<User> user = userRepository.findById(currentUserId);
 
-        // 1. 내 친구들의 ID 목록을 가져옵니다.
+        // 내 친구들의 ID 목록 가져오기
         List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);
         List<Long> peerIds = myPeers.stream()
                 .map(peerShip -> peerShip.getRequester().getId().equals(currentUserId)
@@ -828,12 +827,12 @@ public class QuestService {
                         : peerShip.getRequester().getId())
                 .collect(Collectors.toList());
 
-        // 친구가 한 명도 없으면 빈 페이지를 즉시 반환합니다.
+        // 친구가 한 명도 없으면 빈 페이지를 즉시 반환
         if (peerIds.isEmpty()) {
             return Page.empty(pageable);
         }
 
-        // 2. Repository를 호출하여 친구들의 인증 퀘스트를 'Pageable'에 정의된 순서(날짜순)대로 가져옵니다.
+        // 친구들의 인증 퀘스트를 가져옴
         Page<Quest> questPage = questRepository.findPeerQuestsForVerification(
                 peerIds, QuestStatus.VERIFY, pageable);
 

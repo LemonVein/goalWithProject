@@ -72,11 +72,13 @@ public class QuestController {
 
     }
 
+    // 동료들의 인증받을 게시물들 불러오기
     @GetMapping("/verification/peers")
     public ResponseEntity<Page<UserQuestVerifyResponseDto>> getPeerVerifyQuest(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
         Page<UserQuestVerifyResponseDto> result = questService.getPeerQuestsForVerification(authorization, pageable);
         return ResponseEntity.ok(result);
     }
+
 
     @PostMapping("/{questId}/reaction")
     public ResponseEntity<Void> addReaction(@RequestHeader("Authorization") String authorization, @PathVariable Long questId, @RequestBody ReactionRequestDto reactionRequestDto) {

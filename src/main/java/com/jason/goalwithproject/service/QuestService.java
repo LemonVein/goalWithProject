@@ -102,7 +102,7 @@ public class QuestService {
         return questListDto;
     }
 
-    public Map<String, String> createQuest(@RequestHeader("Authorization") String authorization, QuestAddRequest questAddRequest) {
+    public Map<String, String> createQuest(@RequestHeader("Authorization") String authorization, QuestAddRequest questAddRequest) throws Exception {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
 
@@ -146,7 +146,7 @@ public class QuestService {
 
             checkFirstQuestAchievement(user); // 1번 도전과제 추가
         } catch (Exception e) {
-            return Map.of("status", "failure");
+            throw new Exception();
         }
 
         return Map.of("status", "success");

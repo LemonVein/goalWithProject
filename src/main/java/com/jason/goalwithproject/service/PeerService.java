@@ -70,29 +70,35 @@ public class PeerService {
         return Map.of("status", "success");
     }
 
-    // 동료 불러오기 메서드
+    // 동료 불러오기 메서드 (검색 추가)
     @Transactional(readOnly = true)
-    public Page<RequesterDto> getMyPeers(String authorization, Pageable pageable) {
+    public Page<RequesterDto> getMyPeers(String authorization, String search, Pageable pageable) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
 
-        Page<PeerShip> peerShipPage = peerShipRepository.findMyPeers(
-                userId, PeerStatus.ACCEPTED, pageable);
+        Page<PeerShip> peerShipPage;
+
+        // 검색어가 있을 때: 친구 닉네임 검색
+        if (search != null && !search.isBlank()) {
+            peerShipPage = peerShipRepository.searchMyPeers(userId, search, pageable);
+        }
+        // 검색어가 없을 때: 전체 조회
+        else {
+            peerShipPage = peerShipRepository.findMyPeers(userId, PeerStatus.ACCEPTED, pageable);
+        }
 
         return peerShipPage.map(peerShip -> {
             User peerUser;
+            // 친구가 누구인지 판별 (내가 요청자면 상대는 수신자, 반대면 반대)
             if (peerShip.getRequester().getId().equals(userId)) {
-                // 내가 요청자이면, 상대방은 수신자
                 peerUser = peerShip.getAddressee();
             } else {
-                // 내가 수신자이면, 상대방은 요청자
                 peerUser = peerShip.getRequester();
             }
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(peerUser.getId()).get();
-            String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
-                    ? userCharacter.getCharacterImage().getImage()
-                    : null;
+            String characterImageUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(peerUser.getId())
+                    .map(uc -> uc.getCharacterImage().getImage())
+                    .orElse(null);
 
             return RequesterDto.builder()
                     .id(peerUser.getId())
@@ -106,20 +112,37 @@ public class PeerService {
 
     // 동료 신청자 불러오는 메서드
     @Transactional(readOnly = true)
-    public Page<RequesterDto> getRequesters(@RequestHeader String authorization, Pageable pageable) {
+    public Page<RequesterDto> getRequesters(@RequestHeader String authorization, String search, Pageable pageable) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
 
-        Page<PeerShip> requestPage = peerShipRepository.findByAddressee_IdAndStatus(
-                userId, PeerStatus.PENDING, pageable);
+        Page<PeerShip> requestPage;
+
+        // 검색어가 있을 때: 보낸 사람 닉네임으로 검색
+        if (search != null && !search.isBlank()) {
+            requestPage = peerShipRepository.findByAddressee_IdAndStatusAndRequester_NickNameContaining(
+                    userId,
+                    PeerStatus.PENDING,
+                    search,
+                    pageable
+            );
+        }
+        // 검색어가 없을 때: 기존 전체 조회
+        else {
+            requestPage = peerShipRepository.findByAddressee_IdAndStatus(
+                    userId,
+                    PeerStatus.PENDING,
+                    pageable
+            );
+        }
 
         return requestPage.map(peerShip -> {
-            User requester = peerShip.getRequester(); // 요청을 보낸 사람(requester)의 정보를 가져옴.
+            User requester = peerShip.getRequester(); // 요청을 보낸 사람
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(requester.getId()).get();
-            String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
-                    ? userCharacter.getCharacterImage().getImage()
-                    : null;
+            // 캐릭터 이미지 조회 (Null Safe 처리로 개선)
+            String characterImageUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(requester.getId())
+                    .map(uc -> uc.getCharacterImage().getImage())
+                    .orElse(null);
 
             return RequesterDto.builder()
                     .id(requester.getId())
@@ -173,20 +196,41 @@ public class PeerService {
 
     // 동료 신청 현황을 불러오는 메서드
     @Transactional(readOnly = true)
-    public Page<RequesterDto> getMyPeerRequests(@RequestHeader String authorization, Pageable pageable) {
+    public Page<RequesterDto> getMyPeerRequests(@RequestHeader String authorization, String search, Pageable pageable) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
         Long userId = Long.valueOf(claims.get("userId").toString());
 
-        Page<PeerShip> requestPage = peerShipRepository.findByRequester_IdAndStatus(
-                userId, PeerStatus.PENDING, pageable);
+        Page<PeerShip> requestPage;
+
+        if (search != null && !search.isBlank()) {
+            requestPage = peerShipRepository.findByRequester_IdAndStatusAndAddressee_NickNameContaining(
+                    userId,
+                    PeerStatus.PENDING,
+                    search,
+                    pageable
+            );
+        }
+        else {
+            requestPage = peerShipRepository.findByRequester_IdAndStatus(
+                    userId,
+                    PeerStatus.PENDING,
+                    pageable
+            );
+        }
 
         return requestPage.map(peerShip -> {
-            User addressee = peerShip.getAddressee(); // 요청을 받은 사람(addressee)의 정보를 가져온다.
+            User addressee = peerShip.getAddressee(); // 요청을 받은 사람
 
-            UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(addressee.getId()).get();
-            String characterImageUrl = (userCharacter != null && userCharacter.getCharacterImage() != null)
-                    ? userCharacter.getCharacterImage().getImage()
-                    : null;
+            // 캐릭터 이미지 조회 (Null Safe 처리)
+            String characterImageUrl = null;
+            Optional<UserCharacter> userCharacterOpt = userCharacterRepository.findByUser_IdAndIsEquippedTrue(addressee.getId());
+
+            if (userCharacterOpt.isPresent()) {
+                CharacterImage img = userCharacterOpt.get().getCharacterImage();
+                if (img != null) {
+                    characterImageUrl = img.getImage();
+                }
+            }
 
             return RequesterDto.builder()
                     .id(addressee.getId())

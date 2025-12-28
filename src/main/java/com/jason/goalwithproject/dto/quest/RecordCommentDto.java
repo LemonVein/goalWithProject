@@ -19,8 +19,9 @@ public class RecordCommentDto {
     private String comment;
     private String character;
     private LocalDateTime createdAt;
+    private Long replyCount;
 
-    public static RecordCommentDto from(QuestVerification verification, String url) {
+    public static RecordCommentDto from(QuestVerification verification, String url, Long replyCount) {
         return RecordCommentDto.builder()
                 .id(verification.getId())
                 .userId(verification.getUser().getId())
@@ -28,6 +29,7 @@ public class RecordCommentDto {
                 .comment(verification.getComment())
                 .character(url)
                 .createdAt(verification.getCreatedAt())
+                .replyCount(replyCount)
                 .build();
     }
 }

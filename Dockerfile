@@ -6,4 +6,4 @@ COPY ${JAR_FILE} app.jar
 
 LABEL authors="jasonkim"
 
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "/app.jar"]

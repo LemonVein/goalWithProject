@@ -8,4 +8,6 @@ import java.util.List;
 public interface QuestRepositoryCustom {
     List<Quest> findVerifiableQuestsByKeyword(QuestStatus status, String keyword);
     Page<Quest> findPeerQuestsForVerification(List<Long> peerIds, QuestStatus status, Pageable pageable);
+    Page<Quest> findPeerQuestsForVerification(List<Long> peerIds, QuestStatus status, String keyword, Pageable pageable);
+    List<Quest> findCandidatesForRecommendation(QuestStatus status, String keyword);
 }

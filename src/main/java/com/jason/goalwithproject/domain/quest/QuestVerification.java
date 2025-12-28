@@ -3,8 +3,11 @@ package com.jason.goalwithproject.domain.quest;
 import com.jason.goalwithproject.domain.user.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -24,6 +27,13 @@ public class QuestVerification {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private QuestVerification parent;
+
+    @OneToMany(mappedBy = "parent", orphanRemoval = true)
+    private List<QuestVerification> children = new ArrayList<>();
 
     private String comment;
 

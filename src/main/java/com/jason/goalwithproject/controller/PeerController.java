@@ -21,8 +21,10 @@ public class PeerController {
 
     // 내 동료들 확인하기
     @GetMapping("")
-    public ResponseEntity<Page<RequesterDto>> getMyPeers(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<RequesterDto> peers = peerService.getMyPeers(authorization, pageable);
+    public ResponseEntity<Page<RequesterDto>> getMyPeers(@RequestHeader("Authorization") String authorization,
+                                                         @RequestParam(value = "search", required = false) String search,
+                                                         @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<RequesterDto> peers = peerService.getMyPeers(authorization, search, pageable);
         return ResponseEntity.ok(peers);
     }
 
@@ -43,8 +45,9 @@ public class PeerController {
     // 받은 동료 요청들 불러오기
     @GetMapping("/requested")
     public ResponseEntity<Page<RequesterDto>> getRequesters(@RequestHeader("Authorization") String authorization,
+                                                            @RequestParam(value = "search", required = false) String search,
                                                             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<RequesterDto> result = peerService.getRequesters(authorization, pageable);
+        Page<RequesterDto> result = peerService.getRequesters(authorization, search, pageable);
         return ResponseEntity.ok(result);
     }
 
@@ -65,8 +68,9 @@ public class PeerController {
     // 내가 요청한 동료요청 확인하기
     @GetMapping("/requesting")
     public ResponseEntity<Page<RequesterDto>> getMyPeerRequests(@RequestHeader("Authorization") String authorization,
+                                                                @RequestParam(value = "search", required = false) String search,
                                                                 @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<RequesterDto> result = peerService.getMyPeerRequests(authorization, pageable);
+        Page<RequesterDto> result = peerService.getMyPeerRequests(authorization, search, pageable);
         return ResponseEntity.ok(result);
     }
 

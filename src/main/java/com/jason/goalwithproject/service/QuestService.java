@@ -357,7 +357,7 @@ public class QuestService {
 
         return recordPage.map(record -> {
             // 해당 기록에 달린 모든 인증(즉 댓글)들을 조회
-            List<QuestVerification> verifications = questVerificationRepository.findAllByQuestRecord_Id(record.getId());
+            List<QuestVerification> verifications = questVerificationRepository.findByQuestRecord_IdAndParentIsNullOrderByCreatedAtAsc(record.getId());
             List<RecordCommentDto> verificationDtos = verifications.stream()
                     .map(verification -> {
                         User user = verification.getUser();
@@ -369,8 +369,9 @@ public class QuestService {
                                 imageUrl = userCharacter.getCharacterImage().getImage();
                             }
                         }
+                        Long replyCount = questVerificationRepository.countByParent_Id(verification.getId());
 
-                        return RecordCommentDto.from(verification, imageUrl);
+                        return RecordCommentDto.from(verification, imageUrl, replyCount);
                     })
                     .collect(Collectors.toList());
 
@@ -700,14 +701,16 @@ public class QuestService {
         checkFirstVerificationOnOthersQuestAchievement(verifyingUser);
     }
 
+    // 인증 상태인 추천 게시물들 불러오기
     @Transactional(readOnly = true)
-    public Page<UserQuestVerifyResponseDto> getRecommendedQuestsForVerification(String authorization, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> getRecommendedQuestsForVerification(String authorization, String search, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        List<Quest> candidates = questRepository.findAllByVerificationRequiredTrueAndQuestStatus(
-                QuestStatus.VERIFY);
+        // ✅ [수정] 검색어가 적용된 후보군 리스트를 DB에서 가져옵니다.
+        // (search가 null이면 전체, 있으면 필터링된 결과가 옵니다)
+        List<Quest> candidates = questRepository.findCandidatesForRecommendation(QuestStatus.VERIFY, search);
 
         // 각 퀘스트의 '추천 점수'를 계산하고, 퀘스트와 점수를 함께 저장
         List<QuestWithScore> scoredQuests = candidates.stream()
@@ -722,17 +725,24 @@ public class QuestService {
         // 추천 점수가 높은 순서대로 정렬
         scoredQuests.sort(Comparator.comparingDouble(QuestWithScore::getScore).reversed());
 
+        // 메모리 페이징 처리 (기존 로직 유지)
         int start = (int) pageable.getOffset();
+
+        // 페이지 범위를 벗어나면 빈 페이지 반환
+        if (start >= scoredQuests.size()) {
+            return Page.empty(pageable);
+        }
+
         int end = Math.min((start + pageable.getPageSize()), scoredQuests.size());
+
         List<Quest> pagedResult = scoredQuests.subList(start, end).stream()
                 .map(QuestWithScore::getQuest)
                 .collect(Collectors.toList());
 
         Page<Quest> questPage = new PageImpl<>(pagedResult, pageable, scoredQuests.size());
 
-        Page<UserQuestVerifyResponseDto> result = questPage.map(quest -> dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, currentUser));
-
-        return result;
+        return questPage.map(quest ->
+                dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, currentUser));
     }
 
     @Transactional
@@ -815,11 +825,12 @@ public class QuestService {
 
     // 친구들의 인증 게시물들을 불러오기 (최신순)
     @Transactional(readOnly = true)
-    public Page<UserQuestVerifyResponseDto> getPeerQuestsForVerification(String authorization, Pageable pageable) {
+    public Page<UserQuestVerifyResponseDto> getPeerQuestsForVerification(String authorization, String search, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
-        Optional<User> user = userRepository.findById(currentUserId);
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        // 내 친구들의 ID 목록 가져오기
+        // 동료들의 ID 목록 가져오기
         List<PeerShip> myPeers = peerShipRepository.findMyPeers(currentUserId, PeerStatus.ACCEPTED);
         List<Long> peerIds = myPeers.stream()
                 .map(peerShip -> peerShip.getRequester().getId().equals(currentUserId)
@@ -827,19 +838,21 @@ public class QuestService {
                         : peerShip.getRequester().getId())
                 .collect(Collectors.toList());
 
-        // 친구가 한 명도 없으면 빈 페이지를 즉시 반환
+        // 친구가 한 명도 없으면 빈 페이지 반환
         if (peerIds.isEmpty()) {
             return Page.empty(pageable);
         }
 
-        // 친구들의 인증 퀘스트를 가져옴
+        // 친구들의 인증 퀘스트 가져오기 (search 파라미터 추가 전달)
         Page<Quest> questPage = questRepository.findPeerQuestsForVerification(
-                peerIds, QuestStatus.VERIFY, pageable);
+                peerIds,
+                QuestStatus.VERIFY,
+                search,
+                pageable
+        );
 
-        Page<UserQuestVerifyResponseDto> dto = questPage.map(quest ->
-                dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, user.get()));
-
-        return dto;
+        return questPage.map(quest ->
+                dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, user));
     }
 
     @Transactional
@@ -1012,12 +1025,15 @@ public class QuestService {
             return QuestRecordDto.fromEntity(record, imageUrls, record.getUser().getId());
         }).toList();
 
-        List<QuestVerification> questVerifications = questVerificationRepository.findAllByQuest_Id(quest.getId());
+        List<QuestVerification> questVerifications = questVerificationRepository.findByQuest_IdAndParentIsNullOrderByCreatedAtAsc(quest.getId());
 
         List<RecordCommentDto> questVerificationDtos = questVerifications.stream()
                 .map(questVerification -> {
                     Optional<UserCharacter> uc = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId());
-                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage());
+
+                    long replyCount = questVerificationRepository.countByParent_Id(questVerification.getId());
+
+                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage(), replyCount);
                 })
                 .toList();
 
@@ -1030,6 +1046,45 @@ public class QuestService {
                 .records(questRecordDtos)
                 .verifications(questVerificationDtos)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecordCommentDto> getReplies(String authorization, Long parentId) {
+        List<QuestVerification> replies = questVerificationRepository.findByParent_IdOrderByCreatedAtAsc(parentId);
+
+        // 2. DTO 변환
+        return replies.stream()
+                .map(reply -> {
+                    String characterUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(reply.getUser().getId())
+                            .map(uc -> uc.getCharacterImage().getImage())
+                            .orElse(null);
+
+                    return RecordCommentDto.from(reply, characterUrl, 0L);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void addReply(String authorization, Long parentId, CommentDto commentDto) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        QuestVerification parentVerification = questVerificationRepository.findById(parentId)
+                .orElseThrow(() -> new EntityNotFoundException("부모 댓글을 찾을 수 없습니다."));
+
+        QuestVerification reply = new QuestVerification();
+        reply.setUser(user);
+        if (parentVerification.getQuest() != null) {
+            reply.setQuest(parentVerification.getQuest());
+        } else {
+            reply.setQuestRecord(parentVerification.getQuestRecord());
+        }
+        reply.setParent(parentVerification);
+        reply.setComment(commentDto.getComment());
+        reply.setCreatedAt(LocalDateTime.now());
+
+        questVerificationRepository.save(reply);
     }
 
     // 1번 도전과제 퀘스트 첫 생성

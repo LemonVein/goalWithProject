@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -26,7 +27,7 @@ public class QuestController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Map<String, String>> createQuest(@RequestHeader("Authorization") String authorization, @RequestBody QuestAddRequest questAddRequest) {
+    public ResponseEntity<Map<String, String>> createQuest(@RequestHeader("Authorization") String authorization, @RequestBody QuestAddRequest questAddRequest) throws Exception {
         Map<String, String> map = questService.createQuest(authorization, questAddRequest);
         return ResponseEntity.ok(map);
     }
@@ -66,16 +67,20 @@ public class QuestController {
 
     // 인증받을 퀘스트 목록 불러오기
     @GetMapping("/verification")
-    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<UserQuestVerifyResponseDto> result = questService.getRecommendedQuestsForVerification(authorization, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getQuestVerifyWithPaging(@RequestHeader("Authorization") String authorization,
+                                                                                     @RequestParam(value = "search", required = false) String search,
+                                                                                     @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> result = questService.getRecommendedQuestsForVerification(authorization, search, pageable);
         return ResponseEntity.ok(result);
 
     }
 
-    // 동료들의 인증받을 게시물들 불러오기
+    // 동료들의 인증받을 게시물들 불러오기 (search 추가 2025.12.27)
     @GetMapping("/verification/peers")
-    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getPeerVerifyQuest(@RequestHeader("Authorization") String authorization, @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<UserQuestVerifyResponseDto> result = questService.getPeerQuestsForVerification(authorization, pageable);
+    public ResponseEntity<Page<UserQuestVerifyResponseDto>> getPeerVerifyQuest(@RequestHeader("Authorization") String authorization,
+                                                                               @RequestParam(value = "search", required = false) String search,
+                                                                               @PageableDefault(size = 10, direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserQuestVerifyResponseDto> result = questService.getPeerQuestsForVerification(authorization, search, pageable);
         return ResponseEntity.ok(result);
     }
 
@@ -146,6 +151,20 @@ public class QuestController {
     public ResponseEntity<QuestSummationDto> getQuestSummation(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
         QuestSummationDto result = questService.getQuestSummation(authorization, questId);
         return ResponseEntity.ok(result);
+    }
+
+    // 특정 댓글의 대댓글 불러오기
+    @GetMapping("verification/comment/{verificationId}")
+    public ResponseEntity<List<RecordCommentDto>> getReplies(@RequestHeader("Authorization") String authorization, @PathVariable Long verificationId) {
+        List<RecordCommentDto> replies = questService.getReplies(authorization, verificationId);
+        return ResponseEntity.ok(replies);
+    }
+
+    // 대댓글 작성
+    @PostMapping("/verification/comment/{verificationId}")
+    public ResponseEntity<Void> addReply(@RequestHeader("Authorization") String authorization, @PathVariable Long verificationId, @RequestBody CommentDto commentDto) {
+        questService.addReply(authorization, verificationId, commentDto);
+        return ResponseEntity.noContent().build();
     }
 
 

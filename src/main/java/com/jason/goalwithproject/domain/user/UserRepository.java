@@ -24,4 +24,7 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
     Page<User> findByNickNameContaining(String name, Pageable pageable);
 
     Page<User> findByLevelBetweenAndIdNot(int minLevel, int maxLevel, Long userId, Pageable pageable);
+
+    // Provider 로 찾기
+    Optional<User> findByProviderAndProviderId(String provider, String providerId);
 }

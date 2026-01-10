@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.common.ReportRequestDto;
 import com.jason.goalwithproject.dto.custom.BadgeDto;
 import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.custom.CharacterIdDto;
@@ -109,6 +110,27 @@ public class UserController {
     public ResponseEntity<GoogleAuthTokenResponse> tryLoginKakao(@RequestBody KakaoTokenDto tokenDto) throws GeneralSecurityException, IOException {
         GoogleAuthTokenResponse response = userService.authenticateKakao(tokenDto);
         return ResponseEntity.ok(response);
+    }
+
+    // 애플 로그인 시도
+    @PostMapping("/apple-login")
+    public ResponseEntity<GoogleAuthTokenResponse> tryLoginApple(@RequestBody GoogleTokenDto tokenDto) throws GeneralSecurityException, IOException {
+        GoogleAuthTokenResponse response = userService.authenticateApple(tokenDto);
+        return ResponseEntity.ok(response);
+    }
+
+    // 계정 삭제
+    @DeleteMapping("/revoke")
+    public ResponseEntity<Void> revokeUser(@RequestHeader("Authorization") String authorization) {
+        userService.revokeUser(authorization);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 유저 신고
+    @PostMapping("/report/{id}")
+    public ResponseEntity<Void> reportVerification(@RequestHeader("Authorization") String authorization, @PathVariable Long id, @RequestBody ReportRequestDto reportRequestDto) throws AccessDeniedException {
+        userService.reportUser(authorization, id, reportRequestDto);
+        return ResponseEntity.noContent().build();
     }
 
 

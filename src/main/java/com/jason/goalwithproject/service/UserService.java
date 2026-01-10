@@ -10,13 +10,13 @@ import com.jason.goalwithproject.domain.custom.BadgeRepository;
 import com.jason.goalwithproject.domain.custom.CharacterImage;
 import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.user.*;
+import com.jason.goalwithproject.dto.common.ReportRequestDto;
 import com.jason.goalwithproject.dto.custom.BadgeDto;
 import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.custom.CharacterIdDto;
 import com.jason.goalwithproject.dto.jwt.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
 import com.jason.goalwithproject.dto.user.*;
-import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +54,8 @@ public class UserService {
     private final BadgeRepository badgeRepository;
     private final JwtService jwtService;
     private final RestTemplate restTemplate;
+    private final AppleAuthService appleAuthService;
+    private final UserReportRepository userReportRepository;
 
     @Value("${google.api.client-id.android}")
     private String googleClientIdAndroid;
@@ -296,6 +298,65 @@ public class UserService {
     }
 
     @Transactional
+    public GoogleAuthTokenResponse authenticateApple(GoogleTokenDto request) {
+        // 애플 서버와 통신하여 유효성 검증 및 고유 ID(sub) 획득
+        AppleInfo appleInfo = appleAuthService.getAppleUserInfo(request.getToken());
+        String appleUniqueId = appleInfo.getSub();
+        String email = appleInfo.getEmail();
+
+        // DB에서 해당 애플 ID를 가진 유저가 있는지 확인
+        // (User 엔티티에 provider="APPLE", providerId=appleUniqueId 로 저장한다고 가정)
+        Optional<User> optionalUser = userRepository.findByProviderAndProviderId("APPLE", appleUniqueId);
+
+        AtomicReference<Boolean> isNewer = new AtomicReference<>(false);
+
+        User user;
+        if (optionalUser.isEmpty()) {
+            // 없으면 회원가입 (신규 유저)
+            user = new User();
+            if (email != null && !email.isBlank()) {
+                user.setEmail(email);
+            } else {
+                // 이메일 가리기 등을 사용해 이메일이 없는 경우 임시 이메일 생성
+                user.setEmail(appleUniqueId.substring(0, 10) + "@apple.login");
+            }
+            String randomSuffix = UUID.randomUUID().toString().substring(0, 8);
+            user.setName("Guest_" + randomSuffix);
+            user.setNickName("Guest_" + randomSuffix);
+            user.setProvider("APPLE");
+            user.setPassword(""); // 소셜로그인
+            user.setProviderId(appleUniqueId);
+            isNewer.set(true);
+            UserType defaultUserType = userTypeRepository.findById(1).orElse(null);
+            user.setUserType(defaultUserType);
+
+            userRepository.save(user);
+
+            setDefaultCharacterAndBadge(user);
+        } else {
+            // 있으면 로그인 처리
+            user = optionalUser.get();
+        }
+
+        Map<String, Object> claims = Map.of("userId", user.getId());
+        String accessToken = jwtTokenProvider.generateAccessToken(claims);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
+
+        LocalDateTime expiryTime = LocalDateTime.now().plusSeconds(jwtTokenProvider.getREFRESH_EXPIRATION_TIME() / 1000);
+        userRefreshTokenRepository.findByUser_Id(user.getId())
+                .ifPresentOrElse(urt -> urt.updateToken(refreshToken, expiryTime),
+                        () -> userRefreshTokenRepository.save(new UserRefreshToken(user, refreshToken, expiryTime)));
+
+        return GoogleAuthTokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .isNewer(isNewer.get())
+                .email(user.getEmail())
+                .name(user.getName())
+                .build();
+    }
+
+    @Transactional
     public GoogleAuthTokenResponse authenticateGoogle(GoogleTokenDto googleIdTokenString) throws GeneralSecurityException, IOException {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), JacksonFactory.getDefaultInstance())
                 // ★ 허용할 클라이언트 ID 목록을 리스트로 전달합니다.
@@ -318,6 +379,7 @@ public class UserService {
                 .orElseGet(() -> {
                     // 처음 방문한 사용자 -> 자동 회원가입
                     User newUser = new User();
+                    newUser.setProvider("GOOGLE");
                     newUser.setEmail(email);
                     newUser.setName(name);
                     newUser.setNickName(generateUniqueNickname(name)); // 닉네임 자동 생성
@@ -445,6 +507,46 @@ public class UserService {
             // 다음 레벨의 필요 경험치를 다시 계산
             requiredExp = getRequiredExpForLevel(user.getLevel());
         }
+    }
+
+    // 유저 삭제 (추후 논리적 삭제로 변경할 예정 26. 01. 01 기준)
+    @Transactional
+    public void revokeUser(String authorization) {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        // 유저 삭제 (연관된 데이터도 Cascade 설정에 의해 같이 삭제됨)
+        userRepository.delete(user);
+    }
+
+    @Transactional
+    public void reportUser(String authorization, Long targetUserId, ReportRequestDto reportRequestDto) throws AccessDeniedException {
+        Long reporterId = jwtService.UserIdFromToken(authorization);
+
+        // 신고자 조회
+        User reporter = userRepository.findById(reporterId)
+                .orElseThrow(() -> new EntityNotFoundException("신고자를 찾을 수 없습니다."));
+
+        // 신고 대상(신고 당한 사람) 조회
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new EntityNotFoundException("신고 대상을 찾을 수 없습니다."));
+
+        if (reporter.getId().equals(targetUser.getId())) {
+            throw new IllegalArgumentException("자기 자신은 신고할 수 없습니다.");
+        }
+
+        if (userReportRepository.existsByReporter_IdAndTarget_Id(reporter.getId(), targetUser.getId())) {
+            throw new IllegalStateException("이미 신고한 유저입니다.");
+        }
+
+        UserReport report = UserReport.builder()
+                .reporter(reporter)
+                .target(targetUser)
+                .reason(reportRequestDto.getReason())
+                .build();
+
+        userReportRepository.save(report);
     }
 
     // 카카오나 구글 계정 이용시 닉네임 자동 생성 시 중복 방지용 메서드

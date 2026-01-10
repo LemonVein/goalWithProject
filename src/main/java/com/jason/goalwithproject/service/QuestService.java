@@ -9,6 +9,7 @@ import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.team.Team;
 import com.jason.goalwithproject.domain.team.TeamRepository;
 import com.jason.goalwithproject.domain.user.*;
+import com.jason.goalwithproject.dto.common.ReportRequestDto;
 import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.dto.user.UserDto;
 import io.jsonwebtoken.Claims;
@@ -53,6 +54,8 @@ public class QuestService {
     private final UserService userService;
     private final UserBadgeRepository userBadgeRepository;
     private final BadgeRepository badgeRepository;
+    private final QuestReportRepository questReportRepository;
+    private final QuestVerificationReportRepository questVerificationReportRepository;
 
     public QuestListDto findQuests(String authentication) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authentication);
@@ -528,6 +531,60 @@ public class QuestService {
         questRecordRepository.delete(targetRecord.get());
         return Map.of("status", "success");
 
+    }
+
+    // 퀘스트를 신고하는 메서드
+    @Transactional
+    public void reportQuest(String authorization, Long questId, ReportRequestDto reportRequestDto) throws AccessDeniedException {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User reporter = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        Quest quest = questRepository.findById(questId)
+                .orElseThrow(() -> new EntityNotFoundException("게시물을 찾을 수 없습니다."));
+
+        if (quest.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("본인의 게시물은 신고할 수 없습니다.");
+        }
+
+        if (questReportRepository.existsByReporter_IdAndQuest_Id(userId, questId)) {
+            throw new IllegalStateException("이미 신고한 게시물입니다.");
+        }
+
+        QuestReport report = QuestReport.builder()
+                .reporter(reporter)
+                .quest(quest)
+                .reason(reportRequestDto.getReason())
+                .build();
+
+        questReportRepository.save(report);
+    }
+
+    // 인증 댓글 신고
+    @Transactional
+    public void reportVerification(String authorization, Long verificationId, ReportRequestDto reportRequestDto) throws AccessDeniedException {
+        Long userId = jwtService.UserIdFromToken(authorization);
+        User reporter = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        QuestVerification verification = questVerificationRepository.findById(verificationId)
+                .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다."));
+
+        if (verification.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("본인의 댓글은 신고할 수 없습니다.");
+        }
+
+        if (questVerificationReportRepository.existsByReporter_IdAndVerification_Id(userId, verificationId)) {
+            throw new IllegalStateException("이미 신고한 댓글입니다.");
+        }
+
+        QuestVerificationReport report = QuestVerificationReport.builder()
+                .reporter(reporter)
+                .verification(verification)
+                .reason(reportRequestDto.getReason())
+                .build();
+
+        questVerificationReportRepository.save(report);
     }
 
 

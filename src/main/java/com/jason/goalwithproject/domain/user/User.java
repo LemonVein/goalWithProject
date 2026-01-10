@@ -41,6 +41,14 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // 소셜로그인 전용 (일반 로그인이라면 NULL)
+    @Column(length = 20)
+    private String provider;
+
+    // 소셜로그인 전용 (일반 로그인이라면 NULL)
+    @Column(length = 255)
+    private String providerId;
+
     public User(String name, String email, String password, String nickName, UserType userType) {
         this.name = name;
         this.email = email;

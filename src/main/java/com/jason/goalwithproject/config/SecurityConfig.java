@@ -48,7 +48,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login/oauth2/code/*", "/oauth2/authorization/*").permitAll()
-                        .requestMatchers("/api/user/login", "/api/user/kakao-login", "/api/user/google-login", "/api/user/register", "/api/user/refresh").permitAll()
+                        .requestMatchers("/api/user/login", "/api/user/kakao-login","/api/user/apple-login"
+                                , "/api/user/google-login", "/api/user/register", "/api/user/refresh").permitAll()
                         .requestMatchers("/api/quest/{questId}/reactions").permitAll()
                         .anyRequest().authenticated()
                 )

@@ -1,5 +1,6 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.common.ReportRequestDto;
 import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.service.QuestService;
 import lombok.RequiredArgsConstructor;
@@ -164,6 +165,20 @@ public class QuestController {
     @PostMapping("/verification/comment/{verificationId}")
     public ResponseEntity<Void> addReply(@RequestHeader("Authorization") String authorization, @PathVariable Long verificationId, @RequestBody CommentDto commentDto) {
         questService.addReply(authorization, verificationId, commentDto);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 퀘스트 신고
+    @PostMapping("/report/{id}")
+    public ResponseEntity<Void> reportQuset(@RequestHeader("Authorization") String authorization, @PathVariable Long id, @RequestBody ReportRequestDto reportRequestDto) throws AccessDeniedException {
+        questService.reportQuest(authorization, id, reportRequestDto);
+        return ResponseEntity.noContent().build();
+    }
+
+    // 댓글 신고
+    @PostMapping("verification/report/{id}")
+    public ResponseEntity<Void> reportVerification(@RequestHeader("Authorization") String authorization, @PathVariable Long id, @RequestBody ReportRequestDto reportRequestDto) throws AccessDeniedException {
+        questService.reportVerification(authorization, id, reportRequestDto);
         return ResponseEntity.noContent().build();
     }
 

@@ -32,14 +32,19 @@ services:
 
       # google.api.client-id.ios
       GOOGLE_API_CLIENT_ID_IOS: ${GOOGLE_IOS_ID}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     depends_on:
       - db
+      - redis
     restart: always
   redis:
     image: redis:alpine
     container_name: goalwith-redis
     ports:
       - "6379:6379"
+    restart: always
   db:
     container_name: goalwith-db
     image: mysql:8.0

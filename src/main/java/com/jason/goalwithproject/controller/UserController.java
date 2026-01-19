@@ -6,6 +6,7 @@ import com.jason.goalwithproject.dto.custom.CharacterDto;
 import com.jason.goalwithproject.dto.custom.CharacterIdDto;
 import com.jason.goalwithproject.dto.jwt.*;
 import com.jason.goalwithproject.dto.user.*;
+import com.jason.goalwithproject.service.JwtService;
 import com.jason.goalwithproject.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final JwtService jwtService;
 
     // 로그인
     @PostMapping("/login")
@@ -51,7 +53,9 @@ public class UserController {
     // 유저 정보 확인
     @GetMapping("/info")
     public ResponseEntity<UserDto> GetUserInfo(@RequestHeader("Authorization") String authorization) {
-        UserDto dto = userService.getUserInfo(authorization);
+        Long userId = jwtService.UserIdFromToken(authorization);
+
+        UserDto dto = userService.getUserInfo(userId);
         return ResponseEntity.ok(dto);
     }
 

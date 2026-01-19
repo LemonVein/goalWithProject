@@ -130,7 +130,7 @@ public class TeamService {
             Quest quest = questRepository.findByTeam_Id(teamId).orElse(null);
             assert quest != null;
             try {
-                questService.deleteQuestWithQuestId(quest.getId());
+                questService.deleteQuestWithQuestId(authorization, quest.getId());
                 teamRepository.delete(targetTeam);
             } catch (Exception e) {
                 return Map.of("status", "failure");

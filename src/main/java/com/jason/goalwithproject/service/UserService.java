@@ -20,8 +20,12 @@ import com.jason.goalwithproject.dto.user.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -56,6 +60,7 @@ public class UserService {
     private final RestTemplate restTemplate;
     private final AppleAuthService appleAuthService;
     private final UserReportRepository userReportRepository;
+    private final CacheManager cacheManager;
 
     @Value("${google.api.client-id.android}")
     private String googleClientIdAndroid;
@@ -136,16 +141,17 @@ public class UserService {
         return new TokenResponseWithStatus(accessToken, refreshToken, "success");
     }
 
-    public UserDto getUserInfo(String authorization) {
-        Long userId = jwtService.UserIdFromToken(authorization);
+    @Transactional
+    // userId를 키값으로 저장
+    @Cacheable(value = "userInfo", key = "#userId", unless = "#result == null")
+    public UserDto getUserInfo(Long userId) {
 
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             throw new EntityNotFoundException("해당하는 유저가 없습니다.");
         }
 
-        UserDto dto = dtoConverterService.convertToDto(user);
-        return dto;
+        return dtoConverterService.convertToDto(user);
 
     }
 
@@ -200,6 +206,7 @@ public class UserService {
 
     // 유저의 대표 캐릭터를 변경
     @Transactional
+    @CacheEvict(value = "userInfo", key = "#userId")
     public void updateCharacter(String authorization, Long userId, CharacterIdDto characterIdDto) throws AccessDeniedException {
         Long myId = jwtService.UserIdFromToken(authorization);
         if (!Objects.equals(myId, userId)) {
@@ -239,8 +246,13 @@ public class UserService {
 
         user.setNickName(userEditInfoDto.getNickname());
         user.setUserType(targetType);
+
+        // 추후에 프론트에서 그냥 유저 아이디를 받게되면 수정할 예정
+        // 직접 캐시 삭제하기
+        cacheManager.getCache("userInfo").evict(currentUserId);
     }
 
+    @Transactional(readOnly = true)
     public UserInformationDto getUserInformation(String authorization, Long userId) {
         User user = userRepository.findById(userId).orElse(null);
 
@@ -265,6 +277,9 @@ public class UserService {
 
             userBadgeRepository.save(userBadge);
             userBadgeRepository.save(changedBadge);
+
+            // 캐시 직접 삭제 메서드
+            cacheManager.getCache("userInfo").evict(userId);
         } else {
             throw new EntityNotFoundException("해당 뱃지를 얻지 않았습니다.");
         }
@@ -490,6 +505,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(value = "userInfo", key = "#user.id")
     public void addExpAndProcessLevelUp(User user, int expToAdd) {
         user.setExp(user.getExp() + expToAdd);
 

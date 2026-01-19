@@ -48,7 +48,7 @@ public class QuestController {
 
     @DeleteMapping("/{questId}")
     public ResponseEntity<Map<String, String>> deleteQuest(@RequestHeader("Authorization") String authorization, @PathVariable Long questId) {
-        Map<String, String> resultMap = questService.deleteQuestWithQuestId(questId);
+        Map<String, String> resultMap = questService.deleteQuestWithQuestId(authorization, questId);
         return ResponseEntity.ok(resultMap);
     }
 

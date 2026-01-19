@@ -16,6 +16,7 @@ import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -36,7 +37,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class QuestService {
-
     private final JwtService jwtService;
     private final QuestRepository questRepository;
     private final TeamRepository teamRepository;
@@ -56,6 +56,7 @@ public class QuestService {
     private final BadgeRepository badgeRepository;
     private final QuestReportRepository questReportRepository;
     private final QuestVerificationReportRepository questVerificationReportRepository;
+    private final CacheManager cacheManager; //
 
     public QuestListDto findQuests(String authentication) {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authentication);
@@ -146,6 +147,8 @@ public class QuestService {
 
         try {
             questRepository.save(newQuest);
+            // 캐시 삭제
+            cacheManager.getCache("userInfo").evict(userId);
 
             checkFirstQuestAchievement(user); // 1번 도전과제 추가
         } catch (Exception e) {
@@ -211,8 +214,10 @@ public class QuestService {
     }
 
     @Transactional
-    public Map<String, String> deleteQuestWithQuestId(Long questId) {
+    public Map<String, String> deleteQuestWithQuestId(String authorization, Long questId) {
         Optional<Quest> target = questRepository.findById(questId);
+
+        Long userId = jwtService.UserIdFromToken(authorization);
 
         if (!target.isPresent()) {
             return Map.of("status", "failure");
@@ -233,6 +238,8 @@ public class QuestService {
             questRecordRepository.deleteAll(questRecords);
 
             questRepository.delete(target.get());
+
+            cacheManager.getCache("userInfo").evict(userId);
 
             return Map.of("status", "success");
         }
@@ -655,11 +662,11 @@ public class QuestService {
             }
             else if (target.get().getVerificationCount() >= target.get().getRequiredVerification()) {
                 target.get().setQuestStatus(QuestStatus.COMPLETE);
+                cacheManager.getCache("userInfo").evict(userId);
 
                 // action point 계산
                 int actionScore = 0;
                 actionScore += 10;
-
 
                 // exp score 계산 방식
                 int score = 0;
@@ -684,6 +691,7 @@ public class QuestService {
                 target.get().getUser().setActionPoint(target.get().getUser().getActionPoint() + actionScore);
             } else {
                 target.get().setQuestStatus(QuestStatus.VERIFY);
+                cacheManager.getCache("userInfo").evict(userId);
             }
         } else {
             // action point 계산
@@ -713,12 +721,14 @@ public class QuestService {
 
         if (isSuccess) {
             checkFirstQuestCompletionAchievement(questOwner);
+            cacheManager.getCache("userInfo").evict(userId);
         }
 
         questRepository.save(target.get());
 
     }
 
+    // 퀘스트 인증하기
     @Transactional
     public void verifyQuest(String authorization, Long questId, CommentDto commentDto) throws AccessDeniedException {
         Long userId = jwtService.UserIdFromToken(authorization);
@@ -802,6 +812,7 @@ public class QuestService {
                 dtoConverterService.convertToQuestVerifyResponseDtoPersonal(quest, currentUser));
     }
 
+    // 인증 댓글 수정
     @Transactional
     public void editVerification(String authorization, Long verificationId, CommentDto commentDto) throws AccessDeniedException {
         Long userId = jwtService.UserIdFromToken(authorization);

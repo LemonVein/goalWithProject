@@ -35,7 +35,7 @@ public class RecordController {
     // 해당 퀘스트의 레코드 생성
     @PostMapping("/create/{questId}")
     public ResponseEntity<Map<String, String>> createQuestRecord(@RequestHeader("Authorization") String authorization, @PathVariable Long questId,
-    @RequestPart("text") String text, @RequestPart(name = "images", required = false) List<MultipartFile> images
+    @RequestPart(value = "text", required = false) String text, @RequestPart(name = "images", required = false) List<MultipartFile> images
                                                                  ) throws IOException {
         Map<String, String> result = questService.addQuestRecord(authorization, questId, text, images);
         return ResponseEntity.ok(result);

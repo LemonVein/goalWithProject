@@ -18,6 +18,7 @@ public interface QuestRepository extends JpaRepository<Quest, Long>, QuestReposi
     List<Quest> findAllByVerificationRequiredTrueAndQuestStatus(QuestStatus questStatus);
     List<Quest> findAllByUser_IdAndTeamIsNull(Long id);
     Optional<Quest> findByUser_IdAndIsMainTrueAndTeamIsNull(Long id);
+    Optional<Quest> findByUser_IdAndIsMainTrueAndTeamIsNullAndQuestStatus(Long id, QuestStatus questStatus);
     Optional<Quest> findByTeam_IdAndQuestStatus(int teamId, QuestStatus questStatus);
 
 //    @Query("SELECT q FROM Quest q WHERE " +

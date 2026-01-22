@@ -371,6 +371,7 @@ public class UserService {
                 .build();
     }
 
+    // 구글 로그인 처리 메서드
     @Transactional
     public GoogleAuthTokenResponse authenticateGoogle(GoogleTokenDto googleIdTokenString) throws GeneralSecurityException, IOException {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), JacksonFactory.getDefaultInstance())

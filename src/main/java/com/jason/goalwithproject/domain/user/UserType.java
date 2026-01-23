@@ -1,15 +1,15 @@
 package com.jason.goalwithproject.domain.user;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "user_type")
 @Getter
 @Setter
 @NoArgsConstructor
+@Builder
+@AllArgsConstructor
 public class UserType {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

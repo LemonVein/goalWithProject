@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @Setter
 @ToString
 @NoArgsConstructor
+@Builder
+@AllArgsConstructor
 public class User {
     @Id
     @Column(unique = true, length = 32)

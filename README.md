@@ -9,11 +9,11 @@
 
 GOALWITH는 사용자가 목표(Quest)를 설정하고, 팀원들과 함께 인증하며 성장하는 **소셜 목표 달성 플랫폼**입니다.
 
-![App Store](https://apps.apple.com/kr/app/goalwith-%EB%AA%A9%ED%91%9C%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%82%B9-%EC%8A%B5%EA%B4%80-%ED%88%AC%EB%91%90-%EB%A3%A8%ED%8B%B4-%EA%B0%93%EC%83%9D/id6756700186)
+[App Store](https://apps.apple.com/kr/app/goalwith-%EB%AA%A9%ED%91%9C%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%82%B9-%EC%8A%B5%EA%B4%80-%ED%88%AC%EB%91%90-%EB%A3%A8%ED%8B%B4-%EA%B0%93%EC%83%9D/id6756700186)
 
 ---
 
-## 📖 목차
+## 목차
 1. [프로젝트 개요](#-프로젝트-개요)
 2. [기술 스택](#-기술-스택)
 3. [시스템 아키텍처](#-시스템-아키텍처)

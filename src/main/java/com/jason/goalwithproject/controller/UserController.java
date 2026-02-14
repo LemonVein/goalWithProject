@@ -31,7 +31,7 @@ public class UserController {
 
     // 로그인
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> TryLogin(@RequestBody UserLoginDto userLoginDto) {
+    public ResponseEntity<TokenResponse> TryLogin(@RequestBody UserLoginDto userLoginDto) throws Exception {
         TokenResponse tokens = userService.TryLogin(userLoginDto);
         return ResponseEntity.ok(tokens);
     }

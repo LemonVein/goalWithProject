@@ -21,9 +21,23 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
 
     List<User> findAllByUserType(UserType userType);
 
+    @Query("SELECT u FROM User u WHERE u.nickName LIKE %:keyword% AND u.userStatus = com.jason.goalwithproject.domain.user.UserStatus.ACTIVE " +
+            "AND u.role <> com.jason.goalwithproject.domain.user.Role.ROLE_ADMIN")
+    Page<User> searchActiveUsers(@Param("keyword") String keyword, Pageable pageable);
+
     Page<User> findByNickNameContaining(String name, Pageable pageable);
 
     Page<User> findByLevelBetweenAndIdNot(int minLevel, int maxLevel, Long userId, Pageable pageable);
+
+    @Query("SELECT u FROM User u " +
+            "WHERE u.level BETWEEN :minLevel AND :maxLevel " +
+            "AND u.id <> :userId " +
+            "AND u.userStatus = com.jason.goalwithproject.domain.user.UserStatus.ACTIVE " +
+            "AND u.role <> com.jason.goalwithproject.domain.user.Role.ROLE_ADMIN") // 🔥 여기 수정됨
+    Page<User> findRecommendCandidates(@Param("minLevel") int minLevel,
+                                       @Param("maxLevel") int maxLevel,
+                                       @Param("userId") Long userId,
+                                       Pageable pageable);
 
     // Provider 로 찾기
     Optional<User> findByProviderAndProviderId(String provider, String providerId);

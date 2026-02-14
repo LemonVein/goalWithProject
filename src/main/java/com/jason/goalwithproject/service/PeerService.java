@@ -277,7 +277,7 @@ public class PeerService {
         Pageable candidatePageable = PageRequest.of(0, 200, Sort.by(Sort.Direction.DESC, "id"));
 
         // 레벨 범위에 맞는 사용자들을 후보군으로 조회. (본인 제외)
-        Page<User> candidatePage = userRepository.findByLevelBetweenAndIdNot(
+        Page<User> candidatePage = userRepository.findRecommendCandidates(
                 minLevel, maxLevel, currentUserId, candidatePageable);
         List<User> fullUsers = candidatePage.getContent();
 

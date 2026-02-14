@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface UserCharacterRepository extends JpaRepository<UserCharacter, Long> {
     UserCharacter findByUser_Id(Long id);
 
-    UserCharacter findById(long id);
+    Optional<UserCharacter> findById(long id);
 
     UserCharacter findByUser_IdAndCharacterImage_Id(Long id, int characterImageId);
 

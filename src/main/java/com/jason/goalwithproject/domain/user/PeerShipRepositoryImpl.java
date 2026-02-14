@@ -11,9 +11,16 @@ import org.w3c.dom.stylesheets.LinkStyle;
 
 import java.util.List;
 
+import static com.jason.goalwithproject.domain.user.QUser.user;
+
 @RequiredArgsConstructor
 public class PeerShipRepositoryImpl implements PeerShipRepositoryCustom {
     private final JPAQueryFactory queryFactory;
+
+    private BooleanExpression isActiveNormalUser(QUser targetUser) {
+        return user.userStatus.eq(UserStatus.ACTIVE)
+                .and(user.role.ne(Role.ROLE_ADMIN));
+    }
 
     @Override
     public Page<PeerShip> searchMyPeers(Long userId, String keyword, Pageable pageable) {
@@ -28,10 +35,12 @@ public class PeerShipRepositoryImpl implements PeerShipRepositoryCustom {
         // 내가 보낸 사람이거나 받은 사람 분류
 
         BooleanExpression case1 = peerShip.requester.id.eq(userId)
-                .and(peerShip.addressee.nickName.containsIgnoreCase(keyword));
+                .and(peerShip.addressee.nickName.containsIgnoreCase(keyword))
+                .and(isActiveNormalUser(peerShip.addressee));
 
         BooleanExpression case2 = peerShip.addressee.id.eq(userId)
-                .and(peerShip.requester.nickName.containsIgnoreCase(keyword));
+                .and(peerShip.requester.nickName.containsIgnoreCase(keyword))
+                .and(isActiveNormalUser(peerShip.requester));
 
         builder.and(case1.or(case2));
 

@@ -22,10 +22,20 @@ public class RecordCommentDto {
     private Long replyCount;
 
     public static RecordCommentDto from(QuestVerification verification, String url, Long replyCount) {
+        String username;
+        Long userId;
+        if (verification.getUser() == null) {
+            username = "Unknown";
+            userId = null;
+        } else {
+            username = verification.getUser().getName();
+            userId = verification.getUser().getId();
+        }
+
         return RecordCommentDto.builder()
                 .id(verification.getId())
-                .userId(verification.getUser().getId())
-                .username(verification.getUser().getNickName())
+                .userId(userId)
+                .username(username)
                 .comment(verification.getComment())
                 .character(url)
                 .createdAt(verification.getCreatedAt())

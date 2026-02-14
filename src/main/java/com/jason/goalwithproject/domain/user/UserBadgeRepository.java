@@ -4,12 +4,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserBadgeRepository extends JpaRepository<UserBadge, Integer> {
     UserBadge findByUser_Id(Long id);
 
-    UserBadge findByUser_IdAndEquippedTrue(Long id);
+    Optional<UserBadge> findByUser_IdAndEquippedTrue(Long id);
 
     UserBadge findByUser_IdAndBadge_Id(Long id, int badgeId);
 

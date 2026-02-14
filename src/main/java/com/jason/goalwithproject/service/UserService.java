@@ -65,14 +65,23 @@ public class UserService {
     @Value("${google.api.client-id.android}")
     private String googleClientIdAndroid;
 
+//    @Value("{google.api.client-id.android-debug")
+//    private String googleClientIdAndroidDebug;
+
     @Value("${google.api.client-id.ios}")
     private String googleClientIdIos;
+
+//    @Value("${google.api.client-id.ios-debug}")
+//    private String googleClientIdIosDebug;
 
     @Value("${google.api.client-id.web}")
     private String googleClientIdWeb;
 
+//    @Value("${google.api.client-id.web-debug}")
+//    private String googleClientIdWebDebug;
+
     @Transactional
-    public TokenResponse TryLogin(UserLoginDto userLoginDto) {
+    public TokenResponse TryLogin(UserLoginDto userLoginDto) throws Exception {
         User user = userRepository.findByEmail(userLoginDto.getEmail()).orElse(null);
         if (user == null) {
             throw new EntityNotFoundException("이메일 또는 비밀번호가 잘못되었습니다");
@@ -82,8 +91,13 @@ public class UserService {
             throw new EntityNotFoundException("이메일 또는 비밀번호가 잘못되었습니다");
         }
 
+        if (user.getUserStatus() == UserStatus.SUSPENDED) {
+            throw new Exception("관리자에 의해 정지된 계정입니다.");
+        }
+
         Map<String, Object> claims = Map.of(
-                "userId", user.getId()
+                "userId", user.getId(),
+                "role", user.getRole()
         );
 
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
@@ -113,7 +127,9 @@ public class UserService {
                 userRegisterDto.getEmail(),
                 hashed,
                 userRegisterDto.getNickName(),
-                userType
+                userType,
+                Role.ROLE_USER,
+                UserStatus.ACTIVE
         );
 
         User saveUser = userRepository.save(user);
@@ -133,7 +149,8 @@ public class UserService {
         userBadgeRepository.save(userBadge);
 
         Map<String, Object> claims = Map.of(
-                "userId", saveUser.getId()
+                "userId", saveUser.getId(),
+                "role", user.getRole()
         );
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
         String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
@@ -165,7 +182,15 @@ public class UserService {
         UserRefreshToken userRefreshTokenEntity = userRefreshToken.get();
         User targetUser = userRefreshTokenEntity.getUser();
 
-        Map<String, Object> claims = Map.of("userId", targetUser.getId());
+        if (targetUser.getUserStatus() == UserStatus.SUSPENDED) {
+            userRefreshTokenRepository.delete(userRefreshToken.get()); // 혹시 남아있다면 삭제
+            throw new RuntimeException("정지된 계정입니다.");
+        }
+
+        Map<String, Object> claims = Map.of(
+                "userId", targetUser.getId(),
+                "role", targetUser.getRole()
+        );
         String newAccessToken = jwtTokenProvider.generateAccessToken(claims);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(claims);
         LocalDateTime newExpiryTime = LocalDateTime.now().plusSeconds(jwtTokenProvider.getREFRESH_EXPIRATION_TIME() / 1000);
@@ -260,6 +285,14 @@ public class UserService {
             throw new IllegalArgumentException("존재하지 않는 유저입니다");
         }
 
+        if (user.getUserStatus() == UserStatus.SUSPENDED) {
+            throw new IllegalArgumentException("정지된 유저입니다.");
+        }
+
+        if (user.getUserStatus() == UserStatus.WITHDRAWN) {
+            throw new IllegalArgumentException("삭제된 유저입니다.");
+        }
+
         return dtoConverterService.convertToUserInformationDto(user);
     }
 
@@ -269,7 +302,7 @@ public class UserService {
 
         boolean isHasBadge = userBadgeRepository.existsByUser_IdAndBadge_Id(userId, badgeId);
         if (isHasBadge) {
-            UserBadge userBadge = userBadgeRepository.findByUser_IdAndEquippedTrue(userId);
+            UserBadge userBadge = userBadgeRepository.findByUser_IdAndEquippedTrue(userId).get();
             userBadge.setEquipped(false);
 
             UserBadge changedBadge = userBadgeRepository.findByUser_IdAndBadge_Id(userId, badgeId);
@@ -290,7 +323,7 @@ public class UserService {
     public Page<RequesterDto> searchUsers(String authorization, String keyword, Pageable pageable) {
         Long currentUserId = jwtService.UserIdFromToken(authorization);
 
-        Page<User> userPage = userRepository.findByNickNameContaining(keyword, pageable);
+        Page<User> userPage = userRepository.searchActiveUsers(keyword, pageable);
 
         return userPage.map(user -> {
             if (user.getId().equals(currentUserId)) {
@@ -341,6 +374,8 @@ public class UserService {
             user.setProvider("APPLE");
             user.setPassword(""); // 소셜로그인
             user.setProviderId(appleUniqueId);
+            user.setRole(Role.ROLE_USER);
+            user.setUserStatus(UserStatus.ACTIVE);
             isNewer.set(true);
             UserType defaultUserType = userTypeRepository.findById(1).orElse(null);
             user.setUserType(defaultUserType);
@@ -353,7 +388,10 @@ public class UserService {
             user = optionalUser.get();
         }
 
-        Map<String, Object> claims = Map.of("userId", user.getId());
+        Map<String, Object> claims = Map.of(
+                "userId", user.getId(),
+                "role", user.getRole()
+        );
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
         String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
 
@@ -375,11 +413,13 @@ public class UserService {
     @Transactional
     public GoogleAuthTokenResponse authenticateGoogle(GoogleTokenDto googleIdTokenString) throws GeneralSecurityException, IOException {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), JacksonFactory.getDefaultInstance())
-                // ★ 허용할 클라이언트 ID 목록을 리스트로 전달합니다.
+                // 허용할 클라이언트 ID 목록을 리스트로 전달합니다.
                 .setAudience(Arrays.asList(googleClientIdAndroid, googleClientIdIos, googleClientIdWeb))
+                // 디버그 환경에서 사용할 키들
+//                        googleClientIdAndroidDebug, googleClientIdWebDebug, googleClientIdIosDebug))
                 .build();
 
-        // 2. 토큰 검증 및 파싱 (실패 시 null 반환 또는 예외 발생)
+        // 토큰 검증 및 파싱 (실패 시 null 반환 또는 예외 발생)
         GoogleIdToken idToken = verifier.verify(googleIdTokenString.getToken());
         if (idToken == null) {
             throw new IllegalArgumentException("유효하지 않은 구글 ID 토큰입니다.");
@@ -402,13 +442,20 @@ public class UserService {
                     newUser.setPassword(""); // 소셜 로그인
                     UserType defaultUserType = userTypeRepository.findById(1).orElse(null);
                     newUser.setUserType(defaultUserType);
+                    newUser.setRole(Role.ROLE_USER);
+                    newUser.setUserStatus(UserStatus.ACTIVE);
+
+                    // 저장
                     newUser = userRepository.save(newUser);
                     setDefaultCharacterAndBadge(newUser); // 기본 캐릭터/뱃지 설정
                     isNewer.set(true);
                     return newUser;
                 });
 
-        Map<String, Object> claims = Map.of("userId", user.getId());
+        Map<String, Object> claims = Map.of(
+                "userId", user.getId(),
+                "role", user.getRole()
+        );
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
         String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
 
@@ -454,13 +501,19 @@ public class UserService {
                     newUser.setPassword(""); // 소셜 로그인
                     UserType defaultUserType = userTypeRepository.findById(1).orElse(null);
                     newUser.setUserType(defaultUserType);
+                    newUser.setRole(Role.ROLE_USER);
+
+                    // 저장
                     newUser = userRepository.save(newUser);
                     setDefaultCharacterAndBadge(newUser); // 기본 캐릭터/뱃지 설정
                     isNewer.set(true);
                     return newUser;
                 });
 
-        Map<String, Object> claims = Map.of("userId", user.getId());
+        Map<String, Object> claims = Map.of(
+                "userId", user.getId(),
+                "role", user.getRole()
+        );
         String accessToken = jwtTokenProvider.generateAccessToken(claims);
         String refreshToken = jwtTokenProvider.generateRefreshToken(claims);
 
@@ -533,8 +586,13 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        // 유저 삭제 (연관된 데이터도 Cascade 설정에 의해 같이 삭제됨)
-        userRepository.delete(user);
+        user.setUserStatus(UserStatus.WITHDRAWN);
+
+        userRefreshTokenRepository.deleteByUser_Id(userId);
+
+        user.setName("탈퇴한 사용자");
+        user.setNickName("Unknown User");
+        user.setEmail("deleted_" + user.getId() + "@deleted.com");
     }
 
     @Transactional

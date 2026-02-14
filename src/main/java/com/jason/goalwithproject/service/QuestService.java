@@ -370,8 +370,13 @@ public class QuestService {
             List<QuestVerification> verifications = questVerificationRepository.findByQuestRecord_IdAndParentIsNullOrderByCreatedAtAsc(record.getId());
             List<RecordCommentDto> verificationDtos = verifications.stream()
                     .map(verification -> {
-                        User user = verification.getUser();
-                        String imageUrl = null;
+                        User user;
+                        if (verification.getUser() != null) {
+                            user = verification.getUser();
+                        } else {
+                            user = null;
+                        }
+                        String imageUrl = "default_character.png";
 
                         if (user != null) {
                             UserCharacter userCharacter = userCharacterRepository.findByUser_IdAndIsEquippedTrue(user.getId()).get();
@@ -775,7 +780,7 @@ public class QuestService {
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        // ✅ [수정] 검색어가 적용된 후보군 리스트를 DB에서 가져옵니다.
+        // 검색어가 적용된 후보군 리스트를 DB에서 가져옵니다.
         // (search가 null이면 전체, 있으면 필터링된 결과가 옵니다)
         List<Quest> candidates = questRepository.findCandidatesForRecommendation(QuestStatus.VERIFY, search);
 
@@ -1077,6 +1082,7 @@ public class QuestService {
         }
     }
 
+    // 요약
     public QuestSummationDto getQuestSummation(String authorization, Long questId) {
         Long userId = jwtService.UserIdFromToken(authorization);
         User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
@@ -1097,11 +1103,19 @@ public class QuestService {
 
         List<RecordCommentDto> questVerificationDtos = questVerifications.stream()
                 .map(questVerification -> {
-                    Optional<UserCharacter> uc = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId());
+                    String characterUrl;
+
+                    if (questVerification.getUser() == null) {
+                        characterUrl = "default_character.png";
+                    } else {
+                        characterUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(questVerification.getUser().getId())
+                                .map(uc -> uc.getCharacterImage().getImage())
+                                .orElse("default_character.png");
+                    }
 
                     long replyCount = questVerificationRepository.countByParent_Id(questVerification.getId());
 
-                    return RecordCommentDto.from(questVerification, uc.get().getCharacterImage().getImage(), replyCount);
+                    return RecordCommentDto.from(questVerification, characterUrl, replyCount);
                 })
                 .toList();
 
@@ -1123,9 +1137,16 @@ public class QuestService {
         // 2. DTO 변환
         return replies.stream()
                 .map(reply -> {
-                    String characterUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(reply.getUser().getId())
-                            .map(uc -> uc.getCharacterImage().getImage())
-                            .orElse(null);
+
+                    String characterUrl;
+
+                    if (reply.getUser() == null) {
+                        characterUrl = "default_character.png";
+                    } else {
+                        characterUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(reply.getUser().getId())
+                                .map(uc -> uc.getCharacterImage().getImage())
+                                .orElse("default_character.png");
+                    }
 
                     return RecordCommentDto.from(reply, characterUrl, 0L);
                 })

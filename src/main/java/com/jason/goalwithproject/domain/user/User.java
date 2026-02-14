@@ -51,13 +51,21 @@ public class User {
     @Column(length = 255)
     private String providerId;
 
-    public User(String name, String email, String password, String nickName, UserType userType) {
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
+    @Column(name = "status")
+    @Enumerated(EnumType.STRING)
+    private UserStatus userStatus;
+
+    public User(String name, String email, String password, String nickName, UserType userType, Role role, UserStatus userStatus) {
         this.name = name;
         this.email = email;
         this.nickName = nickName;
         this.userType = userType;
         this.password = password;
-
+        this.role = role;
+        this.userStatus = userStatus;
     }
 
 }

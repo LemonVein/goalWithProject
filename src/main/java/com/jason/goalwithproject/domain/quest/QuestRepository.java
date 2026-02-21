@@ -16,6 +16,7 @@ public interface QuestRepository extends JpaRepository<Quest, Long>, QuestReposi
     Optional<Quest> findByTeam_Id(int teamId);
     List<Quest> findByTeam_IdIn(List<Integer> teamIds);
     List<Quest> findAllByUser_IdAndTeamIsNull(Long id);
+    List<Quest> findAllByUser_Id(Long userId);
     Optional<Quest> findByUser_IdAndIsMainTrueAndTeamIsNullAndQuestStatus(Long id, QuestStatus questStatus);
     Optional<Quest> findByTeam_IdAndQuestStatus(int teamId, QuestStatus questStatus);
 
@@ -40,6 +41,7 @@ public interface QuestRepository extends JpaRepository<Quest, Long>, QuestReposi
 
     // 특정 상태의 퀘스트 상태들 조회
     long countByUser_IdAndQuestStatus(Long userId, QuestStatus questStatus);
+
 
 
 }

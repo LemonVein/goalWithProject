@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 
 import static com.jason.goalwithproject.domain.quest.QQuest.quest;
+import static com.jason.goalwithproject.domain.user.QUser.user;
 
 import java.util.List;
 
@@ -125,6 +126,33 @@ public class QuestRepositoryImpl implements QuestRepositoryCustom {
                 .selectFrom(quest)
                 .where(builder)
                 .fetch();
+    }
+
+    // 특정 상ㅌ의 퀘스트 불러오기
+    @Override
+    public Page<Quest> findAllQuestsByStatus(QuestStatus status, Pageable pageable) {
+
+        // 1. 데이터 조회 쿼리
+        List<Quest> content = queryFactory
+                .selectFrom(quest)
+                .join(quest.user, user).fetchJoin() // 작성자 정보 함께 로딩
+                .where(
+                        quest.questStatus.eq(status)
+                )
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .orderBy(quest.startDate.desc()) // 최신순 정렬
+                .fetch();
+
+        // 2. 카운트 쿼리
+        JPAQuery<Long> countQuery = queryFactory
+                .select(quest.count())
+                .from(quest)
+                .where(
+                        quest.questStatus.eq(status)
+                );
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
 }

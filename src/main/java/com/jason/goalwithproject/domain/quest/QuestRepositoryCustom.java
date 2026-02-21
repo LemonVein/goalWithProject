@@ -10,4 +10,7 @@ public interface QuestRepositoryCustom {
     Page<Quest> findPeerQuestsForVerification(List<Long> peerIds, QuestStatus status, Pageable pageable);
     Page<Quest> findPeerQuestsForVerification(List<Long> peerIds, QuestStatus status, String keyword, Pageable pageable);
     List<Quest> findCandidatesForRecommendation(QuestStatus status, String keyword);
+
+    // 특정 상태의 모든 퀘스트 반환
+    Page<Quest> findAllQuestsByStatus(QuestStatus status, Pageable pageable);
 }

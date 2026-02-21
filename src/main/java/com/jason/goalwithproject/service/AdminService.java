@@ -7,6 +7,7 @@ import com.jason.goalwithproject.domain.user.UserRepository;
 import com.jason.goalwithproject.domain.user.UserStatus;
 import com.jason.goalwithproject.dto.quest.QuestDto;
 import com.jason.goalwithproject.dto.quest.QuestVerifyDto;
+import com.jason.goalwithproject.dto.user.SingleUserDtoForAdmin;
 import com.jason.goalwithproject.dto.user.UserInfoForAdmin;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +41,25 @@ public class AdminService {
 
         return questPage.map(dtoConverterService::convertToSingleQuestDto);
 
+    }
+
+    public Page<QuestDto> getAllVerifyQuestsForAdmin(Pageable pageable) {
+        Page<Quest> questPage = questRepository.findAllQuestsByStatus(QuestStatus.VERIFY, pageable);
+
+        return questPage.map(dtoConverterService::convertToSingleQuestDto);
+
+    }
+
+    @Transactional(readOnly = true)
+    public SingleUserDtoForAdmin getUserDetailForAdmin(Long targetUserId) {
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new EntityNotFoundException("유저를 찾을 수 없습니다."));
+
+        List<Quest> userQuests = questRepository.findAllByUser_Id(targetUserId);
+
+        List<QuestVerification> userVerifications = questVerificationRepository.findAllByUser_Id(targetUserId);
+
+        return dtoConverterService.convertToSingleUserDtoForAdmin(user, userQuests, userVerifications);
     }
 
     // 단일 퀘스트 정보 조회

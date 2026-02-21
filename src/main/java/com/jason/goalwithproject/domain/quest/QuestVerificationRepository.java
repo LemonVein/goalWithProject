@@ -15,7 +15,12 @@ public interface QuestVerificationRepository extends JpaRepository<QuestVerifica
     List<QuestVerification> findAllByQuest_IdAndUser_Id(Long questId, Long userId);
     List<QuestVerification> findAllByQuestRecord_Id(Long questRecordId);
     List<QuestVerification> findAllByQuest_Id(Long questId);
+    List<QuestVerification> findAllByUser_Id(Long userId);
     Optional<QuestVerification> findById(Long id);
+
+
+    // 유저가 해당 퀘스트에 인증을 남겼는지 확인
+    boolean existsByQuest_IdAndUser_Id(Long questId, Long userId);
 
     int countByQuest_Id(Long questId);
 

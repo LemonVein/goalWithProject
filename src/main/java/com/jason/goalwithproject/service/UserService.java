@@ -25,7 +25,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -65,20 +64,20 @@ public class UserService {
     @Value("${google.api.client-id.android}")
     private String googleClientIdAndroid;
 
-//    @Value("{google.api.client-id.android-debug")
-//    private String googleClientIdAndroidDebug;
+    @Value("{google.api.client-id.android-debug")
+    private String googleClientIdAndroidDebug;
 
     @Value("${google.api.client-id.ios}")
     private String googleClientIdIos;
 
-//    @Value("${google.api.client-id.ios-debug}")
-//    private String googleClientIdIosDebug;
+    @Value("${google.api.client-id.ios-debug}")
+    private String googleClientIdIosDebug;
 
     @Value("${google.api.client-id.web}")
     private String googleClientIdWeb;
 
-//    @Value("${google.api.client-id.web-debug}")
-//    private String googleClientIdWebDebug;
+    @Value("${google.api.client-id.web-debug}")
+    private String googleClientIdWebDebug;
 
     @Transactional
     public TokenResponse TryLogin(UserLoginDto userLoginDto) throws Exception {
@@ -414,9 +413,9 @@ public class UserService {
     public GoogleAuthTokenResponse authenticateGoogle(GoogleTokenDto googleIdTokenString) throws GeneralSecurityException, IOException {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), JacksonFactory.getDefaultInstance())
                 // 허용할 클라이언트 ID 목록을 리스트로 전달합니다.
-                .setAudience(Arrays.asList(googleClientIdAndroid, googleClientIdIos, googleClientIdWeb))
+                .setAudience(Arrays.asList(googleClientIdAndroid, googleClientIdIos, googleClientIdWeb, // ))
                 // 디버그 환경에서 사용할 키들
-//                        googleClientIdAndroidDebug, googleClientIdWebDebug, googleClientIdIosDebug))
+                        googleClientIdAndroidDebug, googleClientIdWebDebug, googleClientIdIosDebug))
                 .build();
 
         // 토큰 검증 및 파싱 (실패 시 null 반환 또는 예외 발생)

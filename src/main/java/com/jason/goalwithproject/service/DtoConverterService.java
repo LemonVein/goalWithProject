@@ -5,6 +5,7 @@ import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.user.*;
 import com.jason.goalwithproject.dto.peer.RequesterDto;
 import com.jason.goalwithproject.dto.quest.*;
+import com.jason.goalwithproject.dto.user.SingleUserDtoForAdmin;
 import com.jason.goalwithproject.dto.user.UserDto;
 import com.jason.goalwithproject.dto.user.UserInfoForAdmin;
 import com.jason.goalwithproject.dto.user.UserInformationDto;
@@ -298,6 +299,66 @@ public class DtoConverterService {
                 .startDate(quest.getStartDate())
                 .endDate(quest.getEndDate())
                 .user(convertToDto(quest.getUser()))
+                .build();
+    }
+
+    public SingleUserDtoForAdmin convertToSingleUserDtoForAdmin(
+            User user,
+            List<Quest> quests,
+            List<QuestVerification> verifications) {
+
+        if (user == null) return null;
+
+        String characterUrl = userCharacterRepository.findByUser_IdAndIsEquippedTrue(user.getId())
+                .map(uc -> uc.getCharacterImage().getImage())
+                .orElse("default.png");
+
+        // List 안의 객체들을 개별 변환 메서드를 통해 변환
+        List<SimpleQuestDto> questDtos = quests.stream()
+                .map(this::convertToSimpleQuestDto)
+                .toList();
+
+        List<SimpleCommentDto> commentDtos = verifications.stream()
+                .map(this::convertToSimpleCommentDto)
+                .toList();
+
+        return SingleUserDtoForAdmin.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .nickname(user.getNickName())
+                .email(user.getEmail())
+                .character(characterUrl)
+                .level(user.getLevel())
+                .actionPoints(user.getActionPoint())
+                .createdAt(user.getCreatedAt())
+                .quests(questDtos)
+                .verifications(commentDtos)
+                .build();
+    }
+
+    // QuestVerification -> SimpleCommentDto
+    public SimpleCommentDto convertToSimpleCommentDto(QuestVerification verification) {
+        if (verification == null) return null;
+
+        Long questId = (verification.getQuest() != null) ? verification.getQuest().getId() : null;
+
+        return SimpleCommentDto.builder()
+                .id(verification.getId())
+                .questId(questId)
+                .comment(verification.getComment())
+                .createdAt(verification.getCreatedAt())
+                .build();
+    }
+
+    // Quest -> SimpleQuestDto
+    public SimpleQuestDto convertToSimpleQuestDto(Quest quest) {
+        if (quest == null) return null;
+
+        return SimpleQuestDto.builder()
+                .id(quest.getId())
+                .questStatus(quest.getQuestStatus())
+                .title(quest.getTitle())
+                .createdAt(quest.getStartDate())
                 .build();
     }
 

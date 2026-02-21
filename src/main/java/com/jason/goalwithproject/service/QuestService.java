@@ -744,6 +744,8 @@ public class QuestService {
         User verifyingUser = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
 
+        boolean isFirstVerification = !questVerificationRepository.existsByQuest_IdAndUser_Id(targetQuest.getId(), userId);
+
         QuestVerification questVerification = new QuestVerification().builder()
                 .questRecord(null)
                 .createdAt(LocalDateTime.now())
@@ -754,23 +756,21 @@ public class QuestService {
 
         questVerificationRepository.save(questVerification);
 
-        targetQuest.setVerificationCount(targetQuest.getVerificationCount() + 1);
+        if (!Objects.equals(targetQuest.getUser().getId(), userId) && isFirstVerification) {
+            targetQuest.setVerificationCount(targetQuest.getVerificationCount() + 1);
 
-        // 새로운 레벨업 방식, 경험치 지급 방법으로 대체
-        // verifyingUser.setExp(verifyingUser.getExp() + 10);
-        userService.addExpAndProcessLevelUp(verifyingUser, 10);
+            userService.addExpAndProcessLevelUp(verifyingUser, 10);
 
-        // 인정드림 뱃지 체크
-        if (!targetQuest.getUser().getId().equals(userId)) {
+            // 인정드림 뱃지 체크
             checkVerificationOnOthersQuestsAchievement(verifyingUser);
+
+            // 4번 도전과제 스마일 피코 체크 (첫 피인증시)
+            User questOwner = targetQuest.getUser();
+            checkFirstVerificationReceivedAchievement(questOwner);
+
+            // 시작 피코 체크
+            checkFirstVerificationOnOthersQuestAchievement(verifyingUser);
         }
-
-        // 4번 도전과제 스마일 피코 체크 (첫 피인증시)
-        User questOwner = targetQuest.getUser();
-        checkFirstVerificationReceivedAchievement(questOwner);
-
-        // 시작 피코 체크
-        checkFirstVerificationOnOthersQuestAchievement(verifyingUser);
     }
 
     // 인증 상태인 추천 게시물들 불러오기

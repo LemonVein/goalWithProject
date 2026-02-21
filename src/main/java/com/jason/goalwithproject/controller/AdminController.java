@@ -2,6 +2,7 @@ package com.jason.goalwithproject.controller;
 
 import com.jason.goalwithproject.dto.quest.QuestDto;
 import com.jason.goalwithproject.dto.quest.QuestVerifyDto;
+import com.jason.goalwithproject.dto.user.SingleUserDtoForAdmin;
 import com.jason.goalwithproject.dto.user.UserInfoForAdmin;
 import com.jason.goalwithproject.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -17,11 +18,25 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    // 모든 유저의 퀘스트 불러오기
+    // 모든 유저들 불러오기
     @GetMapping("/users")
     public ResponseEntity<Page<UserInfoForAdmin>> getUsers(Pageable pageable) {
         Page<UserInfoForAdmin> userPage = adminService.getAllUsersForAdmin(pageable);
         return ResponseEntity.ok(userPage);
+    }
+
+    // 유저 상세 정보
+    @GetMapping("/user/{id}")
+    public ResponseEntity<SingleUserDtoForAdmin> getUserDetail(@PathVariable Long id) {
+        SingleUserDtoForAdmin userDetail = adminService.getUserDetailForAdmin(id);
+        return ResponseEntity.ok(userDetail);
+    }
+
+    // 인증중인 모든 퀘스트 불러오기
+    @GetMapping("/verification")
+    public ResponseEntity<Page<QuestDto>> getverifyQuests(Pageable pageable) {
+        Page<QuestDto> questPage = adminService.getAllVerifyQuestsForAdmin(pageable);
+        return ResponseEntity.ok(questPage);
     }
 
     // 모든 퀘스트 가져오기

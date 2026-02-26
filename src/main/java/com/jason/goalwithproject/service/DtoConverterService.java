@@ -278,6 +278,7 @@ public class DtoConverterService {
         return UserInfoForAdmin.builder()
                 .id(user.getId())
                 .nickname(user.getNickName())
+                .name(user.getName())
                 .email(user.getEmail())
                 .character(getEquippedCharacterName(user.getId()))
                 .level(user.getLevel())

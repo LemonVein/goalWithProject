@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class UserInfoForAdmin {
     private Long id;
+    private String name;
     private String nickname;
     private String email;
     private String character;

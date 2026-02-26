@@ -42,6 +42,7 @@ public interface QuestRepository extends JpaRepository<Quest, Long>, QuestReposi
     // 특정 상태의 퀘스트 상태들 조회
     long countByUser_IdAndQuestStatus(Long userId, QuestStatus questStatus);
 
+    boolean existsByUser_IdAndIsMainTrueAndQuestStatus(Long userId, QuestStatus questStatus);
 
 
 }

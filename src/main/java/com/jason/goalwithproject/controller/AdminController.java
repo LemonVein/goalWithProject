@@ -1,8 +1,11 @@
 package com.jason.goalwithproject.controller;
 
+import com.jason.goalwithproject.dto.quest.QuestCreateRequestForAdmin;
 import com.jason.goalwithproject.dto.quest.QuestDto;
 import com.jason.goalwithproject.dto.quest.QuestVerifyDto;
+import com.jason.goalwithproject.dto.quest.RecordCreateDtoForAdminList;
 import com.jason.goalwithproject.dto.user.SingleUserDtoForAdmin;
+import com.jason.goalwithproject.dto.user.UserCreateRequestDtoForAdmin;
 import com.jason.goalwithproject.dto.user.UserInfoForAdmin;
 import com.jason.goalwithproject.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -87,6 +92,28 @@ public class AdminController {
         adminService.deleteVerification(id);
         return ResponseEntity.noContent().build();
     }
+
+    // 임의 유저 생성
+    @PostMapping("/generate/user")
+    public ResponseEntity<Long> generateUser(@RequestBody UserCreateRequestDtoForAdmin userCreateRequestDto) {
+        Long userId = adminService.createArbitraryUser(userCreateRequestDto);
+        return ResponseEntity.ok(userId);
+    }
+
+    // 임의 퀘스트 생
+    @PostMapping("/generate/quest")
+    public ResponseEntity<Long> generateQuset(@RequestBody QuestCreateRequestForAdmin questCreateRequestDto) {
+        Long questId = adminService.createArbitraryQuest(questCreateRequestDto);
+        return ResponseEntity.ok(questId);
+    }
+
+    // 레코드들을 받아서 등록하기
+    @PostMapping("/generate/record")
+    public ResponseEntity<Void> generateRecords(@ModelAttribute RecordCreateDtoForAdminList records) throws IOException {
+        adminService.createArbitraryQuestRecords(records);
+        return ResponseEntity.noContent().build();
+    }
+
 
 
 

@@ -40,7 +40,6 @@ import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,21 +63,22 @@ public class UserService {
     @Value("${google.api.client-id.android}")
     private String googleClientIdAndroid;
 
-    @Value("{google.api.client-id.android-debug")
-    private String googleClientIdAndroidDebug;
-
     @Value("${google.api.client-id.ios}")
     private String googleClientIdIos;
-
-    @Value("${google.api.client-id.ios-debug}")
-    private String googleClientIdIosDebug;
 
     @Value("${google.api.client-id.web}")
     private String googleClientIdWeb;
 
-    @Value("${google.api.client-id.web-debug}")
-    private String googleClientIdWebDebug;
+//    @Value("{google.api.client-id.android-debug")
+//    private String googleClientIdAndroidDebug;
+//
+//    @Value("${google.api.client-id.web-debug}")
+//    private String googleClientIdWebDebug;
+//
+//    @Value("${google.api.client-id.ios-debug}")
+//    private String googleClientIdIosDebug;
 
+    // 로그인 시도
     @Transactional
     public TokenResponse TryLogin(UserLoginDto userLoginDto) throws Exception {
         User user = userRepository.findByEmail(userLoginDto.getEmail()).orElse(null);
@@ -111,6 +111,7 @@ public class UserService {
         return response;
     }
 
+    // 회원가입 관련 메서드 (이메일)
     public TokenResponseWithStatus TrySignUp(UserRegisterDto userRegisterDto) {
 
         if (userRepository.existsByEmail(userRegisterDto.getEmail())) {
@@ -157,6 +158,7 @@ public class UserService {
         return new TokenResponseWithStatus(accessToken, refreshToken, "success");
     }
 
+    // 특정 단일 유저의 정보를 가져오는 메서드
     @Transactional
     // userId를 키값으로 저장
     @Cacheable(value = "userInfo", key = "#userId", unless = "#result == null")
@@ -352,7 +354,6 @@ public class UserService {
         String email = appleInfo.getEmail();
 
         // DB에서 해당 애플 ID를 가진 유저가 있는지 확인
-        // (User 엔티티에 provider="APPLE", providerId=appleUniqueId 로 저장한다고 가정)
         Optional<User> optionalUser = userRepository.findByProviderAndProviderId("APPLE", appleUniqueId);
 
         AtomicReference<Boolean> isNewer = new AtomicReference<>(false);
@@ -413,9 +414,9 @@ public class UserService {
     public GoogleAuthTokenResponse authenticateGoogle(GoogleTokenDto googleIdTokenString) throws GeneralSecurityException, IOException {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), JacksonFactory.getDefaultInstance())
                 // 허용할 클라이언트 ID 목록을 리스트로 전달합니다.
-                .setAudience(Arrays.asList(googleClientIdAndroid, googleClientIdIos, googleClientIdWeb, // ))
+                .setAudience(Arrays.asList(googleClientIdAndroid, googleClientIdIos, googleClientIdWeb))
                 // 디버그 환경에서 사용할 키들
-                        googleClientIdAndroidDebug, googleClientIdWebDebug, googleClientIdIosDebug))
+                        // googleClientIdAndroidDebug, googleClientIdWebDebug, googleClientIdIosDebug))
                 .build();
 
         // 토큰 검증 및 파싱 (실패 시 null 반환 또는 예외 발생)
@@ -473,6 +474,8 @@ public class UserService {
 
     }
 
+    // 카카오 로그인 관련 메서드
+    // 26. 02. 27 기준 프론트엔드에서는 사용하지 않는 메서드
     @Transactional
     public GoogleAuthTokenResponse authenticateKakao(KakaoTokenDto kakaoTokenDto) throws GeneralSecurityException, IOException {
         Map<String, Object> kakaoUserInfo = getKakaoUserInfo(kakaoTokenDto.getAccessToken());
@@ -578,7 +581,7 @@ public class UserService {
         }
     }
 
-    // 유저 삭제 (추후 논리적 삭제로 변경할 예정 26. 01. 01 기준)
+    // 유저 삭제
     @Transactional
     public void revokeUser(String authorization) {
         Long userId = jwtService.UserIdFromToken(authorization);
@@ -594,6 +597,7 @@ public class UserService {
         user.setEmail("deleted_" + user.getId() + "@deleted.com");
     }
 
+    // 유저 신고 기능
     @Transactional
     public void reportUser(String authorization, Long targetUserId, ReportRequestDto reportRequestDto) throws AccessDeniedException {
         Long reporterId = jwtService.UserIdFromToken(authorization);

@@ -41,10 +41,10 @@ dependencies {
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:regions'
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-    implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
+    implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
     implementation 'com.nimbusds:nimbus-jose-jwt:10.0.2' // 애플 로그인 검증용
     implementation 'net.minidev:json-smart:2.5.0' // Json 처리용 nimbus 와 호환이 잘 된다던데
-    annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
+    annotationProcessor "com.querydsl:querydsl-apt:5.1.0:jakarta"
     annotationProcessor "jakarta.annotation:jakarta.annotation-api"
     annotationProcessor "jakarta.persistence:jakarta.persistence-api"
     compileOnly 'org.projectlombok:lombok'

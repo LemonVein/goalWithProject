@@ -155,4 +155,30 @@ public class QuestRepositoryImpl implements QuestRepositoryCustom {
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
+    // 임의 유저가 만든 퀘스트만 불러오기
+    @Override
+    public Page<Quest> findQuestsByArbitraryUsers(Pageable pageable) {
+
+        List<Quest> content = queryFactory
+                .selectFrom(quest)
+                .join(quest.user, user).fetchJoin()
+                .where(user.email.startsWith("admin_created_"))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .orderBy(quest.id.desc()) // 최신순 정렬
+                .fetch();
+
+        // 전체 개수 카운트 쿼리
+        Long total = queryFactory
+                .select(quest.count())
+                .from(quest)
+                .join(quest.user, user)
+                .where(user.email.startsWith("admin_created_"))
+                .fetchOne();
+
+        long totalCount = (total != null) ? total : 0L;
+
+        return new PageImpl<>(content, pageable, totalCount);
+    }
+
 }

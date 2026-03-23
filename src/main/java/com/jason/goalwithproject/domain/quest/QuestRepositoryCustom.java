@@ -13,4 +13,7 @@ public interface QuestRepositoryCustom {
 
     // 특정 상태의 모든 퀘스트 반환
     Page<Quest> findAllQuestsByStatus(QuestStatus status, Pageable pageable);
+
+    // 임의 유저가 생성한 퀘스트만 반환
+    Page<Quest> findQuestsByArbitraryUsers(Pageable pageable);
 }

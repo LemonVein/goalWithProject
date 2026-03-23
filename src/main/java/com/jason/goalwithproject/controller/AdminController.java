@@ -1,9 +1,7 @@
 package com.jason.goalwithproject.controller;
 
-import com.jason.goalwithproject.dto.quest.QuestCreateRequestForAdmin;
-import com.jason.goalwithproject.dto.quest.QuestDto;
-import com.jason.goalwithproject.dto.quest.QuestVerifyDto;
-import com.jason.goalwithproject.dto.quest.RecordCreateDtoForAdminList;
+import com.jason.goalwithproject.dto.common.ReportResponseDtoForAdmin;
+import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.dto.user.SingleUserDtoForAdmin;
 import com.jason.goalwithproject.dto.user.UserCreateRequestDtoForAdmin;
 import com.jason.goalwithproject.dto.user.UserInfoForAdmin;
@@ -113,6 +111,41 @@ public class AdminController {
         adminService.createArbitraryQuestRecords(records);
         return ResponseEntity.noContent().build();
     }
+
+    // 유저 신고 내역 확인하기
+    @GetMapping("/report/user")
+    public ResponseEntity<Page<ReportResponseDtoForAdmin>> getUserReports(Pageable pageable) {
+        Page<ReportResponseDtoForAdmin> page = adminService.getReportList(pageable);
+        return ResponseEntity.ok(page);
+    }
+
+    // 임의 퀘스트 완료시키기
+    @PutMapping("/quest/complete/{questId}")
+    public ResponseEntity<Void> completeQuest(@PathVariable Long questId) {
+        adminService.completeQuest(questId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/user/created")
+    public ResponseEntity<Page<UserInfoForAdmin>> getCreatedUsers(Pageable pageable) {
+        Page<UserInfoForAdmin> page = adminService.getArbitraryUserList(pageable);
+        return ResponseEntity.ok(page);
+    }
+
+    @GetMapping("/user/created/quest")
+    public ResponseEntity<Page<QuestDto>> getCreatedQuests(Pageable pageable) {
+        Page<QuestDto> page = adminService.getArbitraryQuestList(pageable);
+        return ResponseEntity.ok(page);
+
+    }
+
+    // 댓글 작성
+    @PostMapping("/generate/quest/verification")
+    public ResponseEntity<Void> generateComment(@RequestBody CommentAddRequestDtoForAdmin commentAddRequestDto) {
+        adminService.generateComment(commentAddRequestDto);
+        return ResponseEntity.noContent().build();
+    }
+
 
 
 

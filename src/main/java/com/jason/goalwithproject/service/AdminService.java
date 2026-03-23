@@ -7,6 +7,7 @@ import com.jason.goalwithproject.domain.custom.CharacterImage;
 import com.jason.goalwithproject.domain.custom.CharacterImageRepository;
 import com.jason.goalwithproject.domain.quest.*;
 import com.jason.goalwithproject.domain.user.*;
+import com.jason.goalwithproject.dto.common.ReportResponseDtoForAdmin;
 import com.jason.goalwithproject.dto.quest.*;
 import com.jason.goalwithproject.dto.user.SingleUserDtoForAdmin;
 import com.jason.goalwithproject.dto.user.UserCreateRequestDtoForAdmin;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminService {
     private final UserRepository userRepository;
+    private final UserReportRepository userReportRepository;
     private final QuestRepository questRepository;
     private final UserTypeRepository userTypeRepository;
     private final CharacterImageRepository characterImageRepository;
@@ -265,6 +267,78 @@ public class AdminService {
                 }
             }
         }
+    }
+
+    // 신고 내역 불러오기
+    @Transactional(readOnly = true)
+    public Page<ReportResponseDtoForAdmin> getReportList(Pageable pageable) {
+
+        Page<UserReport> reportPage = userReportRepository.findAll(pageable);
+
+        return reportPage.map(report -> ReportResponseDtoForAdmin.builder()
+                .id(report.getId())
+                .reason(report.getReason())
+                .reporterId(report.getReporter().getId())
+                .targetId(report.getTarget().getId())
+                .build()
+        );
+    }
+
+    // 퀘스트 완료시키기
+    @Transactional
+    public void completeQuest(Long id) {
+        Quest target = questRepository.findById(id).orElse(null);
+        if (target == null) {
+            throw new EntityNotFoundException("퀘스트를 찾을 수 없습니다");
+        }
+
+        target.setQuestStatus(QuestStatus.COMPLETE);
+        questRepository.save(target);
+    }
+
+    // 임의 생성된 유저들만 불러오기
+    @Transactional(readOnly = true)
+    public Page<UserInfoForAdmin> getArbitraryUserList(Pageable pageable) {
+
+        Page<User> users = userRepository.findArbitraryUsers(pageable);
+
+        return users.map(dtoConverterService::convertToAdminDto);
+    }
+
+    @Transactional
+    public Page<QuestDto> getArbitraryQuestList(Pageable pageable) {
+        Page<Quest> quests = questRepository.findQuestsByArbitraryUsers(pageable);
+
+        return quests.map(dtoConverterService::convertToSingleQuestDto);
+    }
+
+    @Transactional
+    public void generateComment(CommentAddRequestDtoForAdmin commentAddRequestDto) {
+        Quest target = questRepository.findById(commentAddRequestDto.getQuestId()).orElse(null);
+        if (target == null) {
+            throw new EntityNotFoundException("해당 퀘스트가 존재하지 않습니다");
+        }
+
+        User targetUser = userRepository.findById(commentAddRequestDto.getUserId()).orElse(null);
+        if (targetUser == null) {
+            throw new EntityNotFoundException("작성하려는 유저가 존재하지 않습니다.");
+        }
+
+        QuestVerification comment = new QuestVerification();
+        comment.setQuest(target);
+        comment.setUser(targetUser);
+        comment.setCreatedAt(commentAddRequestDto.getCreatedAt());
+        comment.setComment(commentAddRequestDto.getText());
+
+        if (commentAddRequestDto.getParentId() != -1) {
+            QuestVerification parentComment = questVerificationRepository.findById(commentAddRequestDto.getParentId()).orElse(null);
+            if (parentComment == null) {
+                throw new EntityNotFoundException("해당하는 부모 댓글이 없습니다.");
+            }
+            comment.setParent(parentComment);
+        }
+
+        questVerificationRepository.save(comment);
     }
 
 

@@ -316,6 +316,7 @@ public class QuestService {
         return Map.of("status", "success");
     }
 
+    // 레코드 추가
     @Transactional
     public Map<String, String> addQuestRecord(String authorization, Long questId, String text, List<MultipartFile> images) throws IOException {
         Claims claims = jwtService.extractClaimsFromAuthorizationHeader(authorization);
@@ -326,6 +327,7 @@ public class QuestService {
         QuestRecord newQuestRecord = new QuestRecord();
         newQuestRecord.setText(text);
         newQuestRecord.setDate(LocalDateTime.now());
+        newQuestRecord.setCreatedAt(LocalDateTime.now());
         newQuestRecord.setQuest(questRepository.findById(questId).get());
         newQuestRecord.setUser(userRepository.findById(userId).get());
         questRecordRepository.save(newQuestRecord);

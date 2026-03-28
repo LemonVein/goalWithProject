@@ -13,5 +13,4 @@ public class CommentAddRequestDtoForAdmin {
     private String text;
     private LocalDateTime createdAt;
     private Long parentId;
-
 }

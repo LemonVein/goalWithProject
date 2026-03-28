@@ -26,7 +26,6 @@ public class QuestRecord {
 
     private String text;
 
-    @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

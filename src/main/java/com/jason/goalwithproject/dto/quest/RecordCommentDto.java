@@ -28,7 +28,7 @@ public class RecordCommentDto {
             username = "Unknown";
             userId = null;
         } else {
-            username = verification.getUser().getName();
+            username = verification.getUser().getNickName();
             userId = verification.getUser().getId();
         }
 

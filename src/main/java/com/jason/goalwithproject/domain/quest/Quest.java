@@ -35,7 +35,6 @@ public class Quest {
     @Column(name = "is_main")
     private boolean isMain = false;
 
-    @CreationTimestamp
     @Column(name = "start_date")
     private LocalDateTime startDate;
 

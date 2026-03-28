@@ -224,6 +224,7 @@ public class AdminService {
                 .build();
 
         Quest savedQuest = questRepository.save(newQuest);
+        savedQuest.setVerificationRequired(true);
         return savedQuest.getId();
     }
 
@@ -250,6 +251,8 @@ public class AdminService {
             newRecord.setCreatedAt(dto.getCreatedAt());
 
             QuestRecord savedRecord = questRecordRepository.save(newRecord);
+
+            savedRecord.setCreatedAt(dto.getCreatedAt());
 
             // 이미지가 존재한다면 S3 업로드 및 RecordImage 저장
             if (dto.getImages() != null && !dto.getImages().isEmpty()) {
@@ -292,7 +295,12 @@ public class AdminService {
             throw new EntityNotFoundException("퀘스트를 찾을 수 없습니다");
         }
 
-        target.setQuestStatus(QuestStatus.COMPLETE);
+        if (target.getVerificationCount() < target.getRequiredVerification()) {
+            target.setQuestStatus(QuestStatus.VERIFY);
+        }
+        else {
+            target.setQuestStatus(QuestStatus.COMPLETE);
+        }
         questRepository.save(target);
     }
 
